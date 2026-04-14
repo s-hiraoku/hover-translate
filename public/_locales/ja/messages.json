@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "ホバー翻訳"
+  },
+  "extDescription": {
+    "message": "ホバーした英語と日本語のテキストをブロック単位で翻訳します。"
+  }
+}
