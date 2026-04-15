@@ -3,6 +3,7 @@ title: Getting Started
 description: Install the extension and connect your DeepL API key.
 ---
 
+import { Aside } from "@astrojs/starlight/components";
 import { Image } from "astro:assets";
 import popupSetup from "../../assets/screenshots/popup-setup.png";
 import popupActive from "../../assets/screenshots/popup-active.png";
@@ -42,6 +43,14 @@ Build the extension locally and load the generated `dist/` directory into Chrome
 4. Locate the **API Keys** section and copy your key.
 
 > Note: DeepL Free requires a credit card for verification, but usage under 500,000 characters per month is not billed.
+
+<Aside type="tip" title="About the DeepL Free quota">
+  DeepL Free gives you up to 500,000 characters per month at no cost. The quota
+  resets automatically at the start of each billing period, based on your signup
+  date anniversary. No payment is needed. If you hit the limit, just wait until
+  the next cycle and the extension resumes working. You can check your current
+  usage and next reset date at [deepl.com/account/usage](https://www.deepl.com/account/usage).
+</Aside>
 
 ## 3. Connect your key
 

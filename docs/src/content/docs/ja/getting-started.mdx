@@ -3,6 +3,7 @@ title: はじめに
 description: 拡張機能をインストールし、DeepL API キーを接続します。
 ---
 
+import { Aside } from "@astrojs/starlight/components";
 import { Image } from "astro:assets";
 import popupSetup from "../../../assets/screenshots/popup-setup.png";
 import popupActive from "../../../assets/screenshots/popup-active.png";
@@ -42,6 +43,13 @@ import popupActive from "../../../assets/screenshots/popup-active.png";
 4. **API Keys** セクションで API キーを確認し、コピーします。
 
 > 注記: DeepL Free は本人確認のためにクレジットカード登録を求めますが、月 500,000 文字までの利用であれば課金されません。
+
+<Aside type="tip" title="DeepL Free のクォータについて">
+  DeepL Free では、月あたり最大 500,000 文字まで無料で利用できます。クォータは課金なしで
+  毎月自動的にリセットされ、特別な操作は不要です。上限に達した場合も、次のサイクルまで待てば
+  再び利用できます。現在の使用量と次のリセット日は
+  [deepl.com/account/usage](https://www.deepl.com/account/usage) で確認できます。
+</Aside>
 
 ## 3. API キーを接続する
 

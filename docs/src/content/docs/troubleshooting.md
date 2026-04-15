@@ -36,8 +36,10 @@ This page lists the error messages Hover Translate can show and the most direct 
 ### `DeepL free quota exceeded this period.`
 
 - Cause: the 500,000-character monthly free allowance has been exhausted.
-- Fix: wait for the next cycle.
+- Fix: wait for the next cycle. The DeepL Free quota resets automatically every month on your signup date anniversary. No payment is required, and the quota comes back on its own.
 - Tip: reduce **Max characters per request** in **Limits** to conserve quota on large pages.
+- Check usage: you can review your current usage and next reset date at [deepl.com/account/usage](https://www.deepl.com/account/usage).
+- Note: upgrading to DeepL API Pro is optional, not required.
 
 ### `DeepL rate limit hit. Slow down and try again.`
 

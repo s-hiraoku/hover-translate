@@ -5,7 +5,7 @@ description: Understand how Hover Translate handles your data.
 
 # Privacy
 
-Hover Translate sends only the text you hover to DeepL's servers. It does not collect analytics, does not track you, and does not send data anywhere else.
+Hover Translate sends only the text you hover to DeepL's servers. It does not collect analytics, does not track you, and does not send data anywhere else. No billing concerns: the Free plan stays free, and usage resets monthly.
 
 ## What gets sent to DeepL
 
