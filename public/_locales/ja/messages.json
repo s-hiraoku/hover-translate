@@ -1,8 +1,8 @@
 {
   "extName": {
-    "message": "ホバー翻訳"
+    "message": "Hover Translate: 英語 ⇄ 日本語"
   },
   "extDescription": {
-    "message": "ホバーした英語と日本語のテキストをブロック単位で翻訳します。"
+    "message": "段落にホバーするだけで英語と日本語を相互翻訳します。DeepL Free API を使用。"
   }
 }

@@ -1,8 +1,8 @@
 {
   "extName": {
-    "message": "Hover Translate"
+    "message": "Hover Translate: English ⇄ Japanese"
   },
   "extDescription": {
-    "message": "Hover over text to translate between English and Japanese."
+    "message": "Hover over any paragraph to translate between English and Japanese. Powered by the DeepL Free API."
   }
 }
