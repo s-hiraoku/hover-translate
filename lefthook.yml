@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    typecheck:
+      run: pnpm exec tsc -b --noEmit
+
+commit-msg:
+  commands:
+    conventional:
+      run: |
+        MSG=$(head -1 "{1}")
+        if ! echo "$MSG" | grep -qE '^(feat|fix|refactor|perf|docs|style|test|ci|chore|build|revert)(\(.+\))?: .+'; then
+          echo "❌ Commit message must follow Conventional Commits format:"
+          echo "   <type>(<scope>): <description>"
+          echo "   Types: feat, fix, refactor, perf, docs, style, test, ci, chore, build, revert"
+          echo ""
+          echo "   Your message: $MSG"
+          exit 1
+        fi

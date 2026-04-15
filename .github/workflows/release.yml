@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec tsc -b --noEmit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Create zip
+        run: cd dist && zip -r ../hover-translate-${{ github.ref_name }}.zip . -x '*.map' '*.DS_Store' '.synapse/*' '**/.synapse/*'
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES=$(sed -n "/## \[${VERSION}\]/,/## \[/{/## \[${VERSION}\]/d;/## \[/d;p;}" CHANGELOG.md)
+          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: hover-translate-${{ github.ref_name }}.zip
+          body: ${{ steps.changelog.outputs.notes }}
+          generate_release_notes: false
