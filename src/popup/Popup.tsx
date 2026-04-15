@@ -166,33 +166,64 @@ export function Popup() {
 
   return (
     <div className="popup">
-      <h1>Hover Translate</h1>
-      <p className="desc">Hover over text to translate between English ⇄ Japanese.</p>
-      <section className="setup">
-        <h2>Setup</h2>
-        {setupMissing ? <div className="banner warn">Setup required</div> : null}
-        <input
-          type="password"
-          placeholder="DeepL API key"
-          value={apiKeyInput}
-          onChange={(event) => setApiKeyInput(event.target.value)}
-          disabled={!loaded}
-        />
-        <div className="row">
-          <button type="button" onClick={() => void saveApiKey()} disabled={!loaded || saving}>
-            {saving ? "Saving..." : "Save"}
+      <header>
+        <h1>
+          Hover <span className="accent">Translate</span>
+        </h1>
+        <p className="desc">
+          Hover any block. English <span className="glyph">⇄</span> Japanese, instantly.
+        </p>
+        <div className="header-rule">
+          <span className="issue">№ 01 · DeepL Edition</span>
+        </div>
+      </header>
+
+      <section className="section setup-section">
+        <div className="section-head">
+          <h2>Setup</h2>
+          <span className="num">01 / 04</span>
+        </div>
+        {setupMissing ? <div className="banner">API key required</div> : null}
+        <div className="field">
+          <span className="field-label">DeepL API Key</span>
+          <input
+            type="password"
+            placeholder="Paste your key here"
+            value={apiKeyInput}
+            onChange={(event) => setApiKeyInput(event.target.value)}
+            disabled={!loaded}
+          />
+        </div>
+        <div className="button-row">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void saveApiKey()}
+            disabled={!loaded || saving}
+          >
+            {saving ? "Saving" : "Save"}
           </button>
-          <button type="button" onClick={() => void testConnection()} disabled={!loaded || testing}>
-            {testing ? "Testing..." : "Test Connection"}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => void testConnection()}
+            disabled={!loaded || testing}
+          >
+            {testing ? "Testing" : "Test"}
           </button>
         </div>
-        <a href="https://www.deepl.com/pro-api" target="_blank" rel="noreferrer">
-          Get a free key at https://www.deepl.com/pro-api
+        <a
+          className="helper-link"
+          href="https://www.deepl.com/pro-api"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Get a free key at <u>deepl.com/pro-api</u>
         </a>
         {testResult ? (
-          <p className={testResult.ok ? "status-text" : "error-text"}>
+          <p className={`inline-msg ${testResult.ok ? "ok" : "err"}`}>
             {testResult.ok
-              ? "Connection OK"
+              ? "Connection verified."
               : testResult.errorCode
                 ? messageForCode(testResult.errorCode, maxChars)
                 : testResult.error || "Connection test failed."}
@@ -200,20 +231,34 @@ export function Popup() {
         ) : null}
       </section>
 
-      <section className="toggle-section">
-        <h2>Toggle</h2>
-        <button
-          type="button"
-          className={`toggle ${enabled ? "on" : "off"}`}
-          onClick={toggle}
-          disabled={!loaded || setupMissing}
-          title={setupMissing ? "Save an API key first" : undefined}
-        >
-          {enabled ? "ON" : "OFF"}
-        </button>
-        <p className="hint">
-          Shortcut: {shortcut || "(unset)"}{" "}
+      <section className="section toggle-section">
+        <div className="section-head">
+          <h2>Translate</h2>
+          <span className="num">02 / 04</span>
+        </div>
+        <div className="toggle-wrap">
+          <div className="toggle-label">
+            <span className={`status ${enabled ? "is-on" : "is-off"}`}>
+              {enabled ? "Active" : "Idle"}
+            </span>
+            <span className="sub">
+              {setupMissing ? "Save a key first" : enabled ? "Hovering · live" : "Press to enable"}
+            </span>
+          </div>
+          <button
+            type="button"
+            className={`toggle ${enabled ? "on" : "off"}`}
+            onClick={toggle}
+            disabled={!loaded || setupMissing}
+            title={setupMissing ? "Save an API key first" : undefined}
+            aria-label={enabled ? "Disable hover translation" : "Enable hover translation"}
+          />
+        </div>
+        <div className="shortcut">
+          <span className="label">Shortcut</span>
+          <span className={`kbd ${shortcut ? "" : "unset"}`}>{shortcut || "unset"}</span>
           <a
+            className="change"
             href="#"
             onClick={(event) => {
               event.preventDefault();
@@ -222,49 +267,68 @@ export function Popup() {
           >
             Change
           </a>
-        </p>
+        </div>
       </section>
 
       {!setupMissing ? (
-        <section className="quota">
+        <section className="section quota-section">
           <div className="section-head">
             <h2>Quota</h2>
-            <button type="button" onClick={() => void refreshUsage()} disabled={usageLoading}>
-              {usageLoading ? "Loading..." : "Refresh"}
-            </button>
+            <span className="num">03 / 04</span>
           </div>
           {usageLoading ? (
-            <p>Loading usage...</p>
+            <p className="quota-loading">Loading usage</p>
           ) : usage ? (
             <>
-              <div className="bar" aria-hidden="true">
-                <div className={`fill ${usageLevel}`} style={{ width: `${usagePercent}%` }} />
+              <div className="quota-bar" aria-hidden="true">
+                <div
+                  className={`quota-fill ${usageLevel}`}
+                  style={{ width: `${Math.max(usagePercent, 2)}%` }}
+                />
               </div>
-              <p>
-                {usage.character_count.toLocaleString()} / {usage.character_limit.toLocaleString()}{" "}
-                characters ({usagePercent}% used)
-              </p>
+              <div className="quota-readout">
+                <span className="numbers">
+                  {usage.character_count.toLocaleString()} /{" "}
+                  {usage.character_limit.toLocaleString()}
+                </span>
+                <span className="percent">{usagePercent}%</span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-tiny"
+                onClick={() => void refreshUsage()}
+                disabled={usageLoading}
+              >
+                Refresh
+              </button>
             </>
           ) : (
-            <p className="error-text">Usage unavailable.</p>
+            <p className="quota-empty">Usage unavailable.</p>
           )}
         </section>
       ) : null}
 
-      <section className="settings">
-        <h2>Settings</h2>
-        <label htmlFor="maxChars">Max characters per request</label>
-        <input
-          id="maxChars"
-          type="number"
-          min={MIN_MAX_CHARS}
-          max={MAX_MAX_CHARS}
-          step={100}
-          value={maxChars}
-          onChange={(event) => handleMaxCharsChange(event.target.value)}
-          disabled={!loaded}
-        />
-        <p className="hint">Allowed range: 500 to 5000 characters.</p>
+      <section className="section settings-section">
+        <div className="section-head">
+          <h2>Limits</h2>
+          <span className="num">04 / 04</span>
+        </div>
+        <div className="field">
+          <label className="field-label" htmlFor="maxChars">
+            Max characters per request
+          </label>
+          <input
+            id="maxChars"
+            type="number"
+            min={MIN_MAX_CHARS}
+            max={MAX_MAX_CHARS}
+            step={100}
+            value={maxChars}
+            onChange={(event) => handleMaxCharsChange(event.target.value)}
+            disabled={!loaded}
+          />
+        </div>
+        <p className="hint">Range 500 – 5,000</p>
       </section>
     </div>
   );

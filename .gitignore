@@ -6,3 +6,8 @@ node_modules/.tmp
 *.tsbuildinfo
 .synapse/
 .claude/
+.agents/
+# docs
+docs/node_modules
+docs/dist
+docs/.astro

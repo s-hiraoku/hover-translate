@@ -32,4 +32,8 @@ export default defineManifest({
       run_at: "document_idle",
     },
   ],
+  icons: {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png",
+  },
 });
