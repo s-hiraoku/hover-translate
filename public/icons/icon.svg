@@ -21,15 +21,39 @@
   <!-- Seal imperfection: tiny gap at top-left -->
   <path d="M 28 42 A 44 44 0 0 1 38 30" fill="none" stroke="#f5f1e8" stroke-width="5"/>
 
-  <!-- Serif A — heavy weight, centered -->
+  <!-- Stacked monogram: H above, T below, centered -->
   <g fill="#1a1a1a">
-    <path d="M 38 90 L 56 32 L 72 32 L 90 90 L 77 90 L 72.5 75 L 55.5 75 L 51 90 Z M 58 65 L 70 65 L 64 44 Z"/>
+    <!-- Letter H (top half) -->
+    <!-- left vertical stroke -->
+    <rect x="42" y="30" width="9" height="36" rx="0.5"/>
+    <!-- right vertical stroke -->
+    <rect x="77" y="30" width="9" height="36" rx="0.5"/>
+    <!-- horizontal crossbar -->
+    <rect x="51" y="44" width="26" height="8" rx="0.5"/>
+    <!-- serifs on H: top-left -->
+    <rect x="38" y="30" width="17" height="4" rx="0.5"/>
+    <!-- serifs on H: top-right -->
+    <rect x="73" y="30" width="17" height="4" rx="0.5"/>
+    <!-- serifs on H: bottom-left -->
+    <rect x="38" y="62" width="17" height="4" rx="0.5"/>
+    <!-- serifs on H: bottom-right -->
+    <rect x="73" y="62" width="17" height="4" rx="0.5"/>
   </g>
 
-  <!-- Thin ⇄ glyph below A, coral accent -->
-  <g stroke="#e85d5d" stroke-width="2.2" stroke-linecap="round" fill="none">
-    <line x1="50" y1="102" x2="78" y2="102"/>
-    <path d="M 55 97 L 50 102 L 55 107"/>
-    <path d="M 73 97 L 78 102 L 73 107"/>
+  <!-- Coral hairline separator between H and T -->
+  <line x1="50" y1="72" x2="78" y2="72" stroke="#e85d5d" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+
+  <g fill="#1a1a1a">
+    <!-- Letter T (bottom half) -->
+    <!-- horizontal top stroke -->
+    <rect x="36" y="78" width="56" height="9" rx="0.5"/>
+    <!-- vertical stem -->
+    <rect x="59.5" y="87" width="9" height="15" rx="0.5"/>
+    <!-- serifs on T: top-left -->
+    <rect x="34" y="78" width="6" height="4" rx="0.5"/>
+    <!-- serifs on T: top-right -->
+    <rect x="88" y="78" width="6" height="4" rx="0.5"/>
+    <!-- serifs on T: bottom (foot) -->
+    <rect x="54" y="99" width="20" height="4" rx="0.5"/>
   </g>
 </svg>
