@@ -20,6 +20,7 @@ import {
 const HOVER_DELAY_MS = 300;
 const BACKGROUND_UNAVAILABLE_MSG = "Extension background is unavailable. Reload the page.";
 const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
+const MIN_TEXT_LENGTH = 3;
 const BLOCK_SELECTOR = [
   "p",
   "li",
@@ -32,14 +33,13 @@ const BLOCK_SELECTOR = [
   "td",
   "th",
   "blockquote",
-  "article",
-  "section",
-  "div",
-  "main",
-  "aside",
   "figcaption",
   "dd",
   "dt",
+  '[data-as="p"]',
+  '[role="paragraph"]',
+  '[data-testid="tweetText"]',
+  ".notion-text-block",
 ].join(",");
 
 let enabled = false;
@@ -147,8 +147,34 @@ function handleMouseOver(event: MouseEvent): void {
 
   clearHoverTimer();
   hoverTimer = window.setTimeout(() => {
+    if (!isCursorOverText(lastPointer.x, lastPointer.y)) {
+      return;
+    }
     void translateAndShow(block);
   }, HOVER_DELAY_MS);
+}
+
+interface CaretPosition {
+  offsetNode: Node;
+  offset: number;
+}
+
+function isCursorOverText(x: number, y: number): boolean {
+  const doc = document as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null;
+  };
+
+  if (typeof doc.caretPositionFromPoint === "function") {
+    const pos = doc.caretPositionFromPoint(x, y);
+    return pos?.offsetNode?.nodeType === Node.TEXT_NODE;
+  }
+
+  if (typeof document.caretRangeFromPoint === "function") {
+    const range = document.caretRangeFromPoint(x, y);
+    return range?.startContainer?.nodeType === Node.TEXT_NODE;
+  }
+
+  return true;
 }
 
 function handleMouseOut(event: MouseEvent): void {
@@ -270,14 +296,39 @@ function findNearestTextBlock(target: EventTarget | null): HTMLElement | null {
   let element: HTMLElement | null =
     node instanceof HTMLElement ? node : node.parentElement;
 
+  const budget = maxCharsLimit * 2;
+  let fallback: HTMLElement | null = null;
+
   while (element) {
     if (element.matches(BLOCK_SELECTOR)) {
       return element;
     }
+
+    const textLength = (element.textContent ?? "").length;
+    if (textLength > budget) {
+      return fallback;
+    }
+
+    if (!fallback && textLength >= MIN_TEXT_LENGTH && isBlockLevel(element)) {
+      fallback = element;
+    }
+
     element = element.parentElement;
   }
 
-  return null;
+  return fallback;
+}
+
+function isBlockLevel(element: HTMLElement): boolean {
+  const display = window.getComputedStyle(element).display;
+  return (
+    display === "block" ||
+    display === "flex" ||
+    display === "grid" ||
+    display === "list-item" ||
+    display === "flow-root" ||
+    display === "inline-block"
+  );
 }
 
 function extractText(element: HTMLElement): string {
