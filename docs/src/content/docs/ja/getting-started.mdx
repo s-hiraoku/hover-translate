@@ -56,18 +56,20 @@ import popupActive from "../../../assets/screenshots/popup-active.png";
 1. Hover Translate の拡張機能アイコンをクリックし、ポップアップを開きます。
 2. **Setup** セクションの **DeepL API Key** にキーを貼り付けます。
 3. **Save** をクリックします。
-4. **Test Connection** をクリックします。
+4. **Test** をクリックします。
 5. ポップアップに `Connection verified.` と表示されれば接続成功です。
 
 <Image src={popupSetup} alt="API key required バナーが表示されたポップアップ設定画面" width={340} />
 
-## 4. 有効にする
+## 4. 有効化してモードを選ぶ
 
 1. **Translate** セクションで拡張機能を **ON** に切り替えます。
-2. 英文または日本語文を含む通常の Web ページを開きます。
-3. 段落やその他のテキストブロックにホバーします。
-4. およそ 300 ms 後に、要素の近くへ翻訳ツールチップが表示されます。
+2. モードを選びます。
+   - **Hover** — ブロックにホバーすると最寄りの段落を自動翻訳します。
+   - **Selection** — 選択した範囲だけを翻訳します。Selection を選ぶと追加のスイッチが表示され、**Shortcut** (`Alt+Shift+T`) と **Auto** (マウス離し検知) を選べます。
+3. 英文または日本語文を含む通常の Web ページを開き、選んだモードを試します。
+4. 対象テキストの近くに翻訳ツールチップが表示されます。
 
-<Image src={popupActive} alt="接続確認済みで翻訳が有効なポップアップ画面" width={340} />
+<Image src={popupActive} alt="Selection モード + Shortcut トリガーが有効なポップアップ画面" width={340} />
 
-ツールチップが表示されない場合やポップアップにエラーが出る場合は、[トラブルシューティング](/troubleshooting/) を参照してください。
+ツールチップが表示されない場合やポップアップにエラーが出る場合は、[トラブルシューティング](/hover-translate/ja/troubleshooting/) を参照してください。

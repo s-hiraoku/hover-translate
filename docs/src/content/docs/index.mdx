@@ -6,7 +6,7 @@ hero:
   tagline: Hover any block. English ⇄ Japanese, instantly.
   actions:
     - text: Get started
-      link: /getting-started/
+      link: /hover-translate/getting-started/
       icon: right-arrow
       variant: primary
     - text: View on GitHub
@@ -20,43 +20,43 @@ import popupActive from "../../assets/screenshots/popup-active.png";
 
 ## Why Hover Translate?
 
-A lightweight Chrome extension that translates paragraph-sized text blocks the moment you hover over them. Powered by the DeepL Free API.
+A lightweight Chrome extension that translates paragraph-sized text blocks between English and Japanese, on demand, without ever leaving the page. Powered by the DeepL Free API.
 
 <CardGrid>
-  <Card title="Fast" icon="rocket">
-    300ms debounce, LRU cache, DeepL under the hood.
+  <Card title="Two modes" icon="setting">
+    Hover to translate paragraphs automatically, or switch to Selection mode and translate only what you highlight.
   </Card>
   <Card title="Bilingual" icon="translate">
     Auto-detects English or Japanese — no toggling.
   </Card>
   <Card title="Private" icon="seti:lock">
-    Your API key stays in chrome.storage.local. That's it.
+    Your API key stays in chrome.storage.local. No tracking, no analytics.
   </Card>
   <Card title="Keyboard-first" icon="keyboard">
-    Alt+Shift+T toggles translation anywhere.
+    Alt+Shift+T translates the current selection in Selection mode.
   </Card>
 </CardGrid>
 
-Hover Translate is a Chrome extension for reading bilingual pages with less friction. Hover a paragraph, list item, or other text block and the extension shows a translated tooltip in place.
+Hover Translate is a Chrome extension for reading bilingual pages with less friction. It ships with two modes: hover a paragraph to translate it, or select the text you want and trigger the translation by shortcut or automatically on release.
 
 <Image src={popupActive} alt="Hover Translate popup in active state" width={340} />
 
 ## How It Works
 
-1. Hover a paragraph or another supported block element on the page.
-2. Hover Translate checks whether the text contains Japanese characters and chooses the translation direction automatically.
-3. The translated text appears in a floating tooltip near the element you hovered.
+1. Save your DeepL Free API key in the extension popup.
+2. Pick a mode: **Hover** translates the nearest paragraph on mouse hover; **Selection** translates the current text selection via shortcut or automatically after you release the mouse.
+3. Hover Translate detects the language automatically (Japanese ⇄ English) and shows the result in a floating tooltip anchored to the text.
 
 ## Quick Start
 
 <CardGrid>
-  <LinkCard title="Getting Started" href="/getting-started/">
+  <LinkCard title="Getting Started" href="/hover-translate/getting-started/">
     Install the extension, get a DeepL API key, and verify the connection.
   </LinkCard>
-  <LinkCard title="Features" href="/features/">
-    Review language detection, caching, tooltips, quota handling, and limits.
+  <LinkCard title="Features" href="/hover-translate/features/">
+    Review hover mode, selection mode, language detection, caching, tooltips, and quota handling.
   </LinkCard>
-  <LinkCard title="Troubleshooting" href="/troubleshooting/">
+  <LinkCard title="Troubleshooting" href="/hover-translate/troubleshooting/">
     Find fixes for API key, quota, network, and text length errors.
   </LinkCard>
 </CardGrid>

@@ -4,70 +4,95 @@ description: Explore the core translation and usability features.
 ---
 
 import { Image } from "astro:assets";
+import popupHover from "../../assets/screenshots/popup-hover.png";
 import popupActive from "../../assets/screenshots/popup-active.png";
 import popupQuotaDanger from "../../assets/screenshots/popup-quota-danger.png";
 
 # Features
 
-Hover Translate is designed around short reading interruptions: hover a block, read the translation, and keep moving. The extension keeps the interface narrow and relies on DeepL Free for the translation step.
+Hover Translate is designed around short reading interruptions: pick a block, read the translation, and keep moving. The extension keeps the interface narrow and relies on DeepL Free for the translation step.
+
+## Two translation modes
+
+Hover Translate offers two modes that you can switch at any time from the popup.
+
+### Hover mode
+
+In Hover mode, moving the cursor over a paragraph triggers a translation automatically after a short delay.
+
+- Hover any supported block element (paragraph, list item, heading, table cell, etc.).
+- After a 300 ms debounce, the extension checks that the cursor is actually over text (ignoring padding and images).
+- The translation appears in a floating tooltip anchored to the block.
+- Leaving the block hides the tooltip.
+
+<Image src={popupHover} alt="Popup with Hover mode selected" width={340} />
+
+### Selection mode
+
+In Selection mode, nothing happens until you select text. This is useful for pages where paragraphs are long or where you only want a specific phrase translated.
+
+Selection mode has two triggers:
+
+- **Shortcut**: press `Alt+Shift+T` while text is selected. The extension translates only the selection.
+- **Auto**: as soon as you release the mouse and a selection exists, the extension translates it automatically after 300 ms.
+
+Clearing the selection dismisses the tooltip.
+
+<Image src={popupActive} alt="Popup with Selection mode and Shortcut trigger selected" width={340} />
 
 ## Automatic language detection
 
-Hover Translate decides the translation direction from the hovered text itself.
+Hover Translate decides the translation direction from the text itself, in both modes.
 
-- If the text contains Japanese characters, the extension sends it as `JA` and requests English output.
+- If the text contains Japanese characters (hiragana, katakana, or kanji), the extension sends it as `JA` and requests English output.
 - If the text does not contain Japanese characters, the extension assumes English input and requests Japanese output.
 - You do not need to toggle the source language manually.
 
-```ts
-/[\u3040-\u30ff\u4e00-\u9fff]/
-```
+## Block-level detection (Hover mode)
 
-This expression checks for Hiragana, Katakana, and Kanji before the request is sent to DeepL.
+In Hover mode the extension looks for the nearest paragraph-like ancestor of the element under the cursor.
 
-## Block-level detection
-
-The extension translates the nearest block element instead of a single word fragment.
-
-- Supported targets include `p`, `li`, `h1` to `h6`, `td`, `blockquote`, `article`, `section`, `div`, `main`, `aside`, `figcaption`, `dd`, and `dt`.
-- This usually produces a full sentence or paragraph, which gives DeepL more context than isolated words.
-- A 300 ms hover delay reduces accidental requests when the cursor simply passes over the page.
+- Native targets include `p`, `li`, `h1` to `h6`, `td`, `th`, `blockquote`, `figcaption`, `dd`, and `dt`.
+- Modern documentation sites that do not use native `<p>` elements are also supported, including Mintlify (`[data-as="p"]`), Twitter/X tweet text, and Notion public pages.
+- For pages that do not match any known selector, the extension falls back to the nearest block-level ancestor that carries a reasonable amount of text.
+- A 300 ms hover delay reduces accidental requests when the cursor simply passes over the page, and the hover is skipped entirely if the cursor sits on padding or a non-text area.
 
 ## In-page tooltip
 
-Translations appear in a floating tooltip positioned close to the hovered element.
+Translations appear in a floating tooltip positioned close to the source text.
 
-- The tooltip uses `position: fixed`, so it stays anchored relative to the viewport.
-- Its placement adjusts when you are near the edges of the screen.
-- The tooltip disappears when the hover state ends.
-- Error tooltips are visually separated with a red left border and the corresponding message.
+- In Hover mode the tooltip anchors to the hovered block, recomputing its position on each show so it stays aligned even if the page scrolls during the request.
+- In Selection mode the tooltip anchors to the bounding rectangle of the selection range.
+- The tooltip uses `position: fixed` and its placement flips vertically when near the edge of the viewport.
+- Error tooltips are visually separated with a red left border and show the mapped error message.
 
 ## LRU translation cache
 
 Hover Translate avoids re-translating identical blocks during the same service worker session.
 
 - The background service worker keeps a 100-entry least-recently-used cache.
-- Repeated hovers on the same text can be served immediately from cache.
+- Repeated translations of the same text are served from cache.
 - This reduces request volume and helps preserve the monthly DeepL Free quota.
-- The cache is best-effort only. When the service worker restarts, the in-memory cache is cleared.
+- The cache is best-effort. When the service worker restarts, the in-memory cache is cleared.
 
 ## Keyboard shortcut
 
-The default shortcut is `Alt+Shift+T`.
+The default shortcut is `Alt+Shift+T`, dedicated to Selection mode.
 
-- Pressing it toggles Hover Translate on or off from any normal page.
-- After the toggle, the active tab shows a toast in the top-right corner: `Hover Translate: ON` or `Hover Translate: OFF`.
-- If you prefer a different key combination, use the **Change** link in the popup to open `chrome://extensions/shortcuts`.
+- In **Selection + Shortcut** mode, the shortcut translates the current selection on demand.
+- In **Hover** or **Selection + Auto** mode, the shortcut does nothing — these modes do not need a manual trigger.
+- Change the key combination from the **Change** link in the popup, which opens `chrome://extensions/shortcuts`.
 
 ## Quota display
 
 The popup includes a dedicated quota section for DeepL usage.
 
-- Each time you open the popup, the extension requests current usage from DeepL's `/v2/usage` endpoint.
+- Each time you open the popup, the extension requests current usage from DeepL's `/v2/usage` endpoint (results are cached for 30 seconds to avoid redundant requests).
 - The result is shown as a progress bar.
 - Above 80%, the bar changes to an amber warning state.
 - Above 95%, it changes again to a red danger state.
 - Use **Refresh** to fetch the latest usage without closing the popup.
+- The DeepL Free quota resets automatically each month — no payment required.
 
 <div class="doc-screenshot-pair">
   <Image src={popupActive} alt="Popup showing normal quota state at 38 percent" width={340} />
@@ -80,5 +105,5 @@ Very large blocks are stopped before they reach the translation API.
 
 - The default limit is 1500 characters.
 - You can change the limit anywhere from 500 to 5000 characters in **Settings**.
-- When a hovered block exceeds the current limit, the content script skips the request and shows a `Text too long` message instead.
+- When a block or selection exceeds the current limit, the content script skips the request and shows a `Text too long` message instead.
 - Lowering the limit can save quota on pages with very large paragraphs or tables.

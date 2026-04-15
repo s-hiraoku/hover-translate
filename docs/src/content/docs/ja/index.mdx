@@ -6,7 +6,7 @@ hero:
   tagline: ブロックにホバーするだけ。英語⇄日本語を瞬時に。
   actions:
     - text: はじめに
-      link: /ja/getting-started/
+      link: /hover-translate/ja/getting-started/
       icon: right-arrow
       variant: primary
     - text: GitHubで見る
@@ -20,43 +20,43 @@ import popupActive from "../../../assets/screenshots/popup-active.png";
 
 ## 特徴
 
-DeepL Free API を使い、ホバーしたテキストブロックを即座に翻訳する軽量 Chrome 拡張機能です。
+DeepL Free API を使い、ページ上の英語⇄日本語テキストをその場で翻訳する軽量 Chrome 拡張機能です。
 
 <CardGrid>
-  <Card title="高速" icon="rocket">
-    300msデバウンス、LRUキャッシュ、DeepL バックエンド。
+  <Card title="2つのモード" icon="setting">
+    段落にホバーして自動翻訳する Hover モードと、選択範囲だけを翻訳する Selection モードを切り替えられます。
   </Card>
   <Card title="自動言語判定" icon="translate">
     英語か日本語かを自動判定。切り替え不要。
   </Card>
   <Card title="プライベート" icon="seti:lock">
-    APIキーは chrome.storage.local にのみ保存。
+    APIキーは chrome.storage.local にのみ保存。トラッキングや解析は行いません。
   </Card>
   <Card title="キーボード操作" icon="keyboard">
-    Alt+Shift+T でどこからでも ON/OFF。
+    Selection モードでは Alt+Shift+T で選択範囲を翻訳できます。
   </Card>
 </CardGrid>
 
-Hover Translate は、英語と日本語が混在するページをより少ない操作で読めるようにする Chrome 拡張機能です。段落やリスト項目などにホバーするだけで、その場に翻訳ツールチップを表示します。
+Hover Translate は、英語と日本語が混在するページをより少ない操作で読めるようにする Chrome 拡張機能です。ホバーで段落を自動翻訳する Hover モードと、選択したテキストだけをショートカットまたはマウス離し検知で翻訳する Selection モードの 2 つを備えています。
 
 <Image src={popupActive} alt="Hover Translate のポップアップが有効な状態" width={340} />
 
 ## 動作の流れ
 
-1. ページ上の段落や対応するブロック要素にホバーします。
-2. Hover Translate がテキスト内に日本語文字が含まれるかどうかを確認し、翻訳方向を自動で選びます。
-3. 翻訳結果が、ホバーした要素の近くにフローティングツールチップとして表示されます。
+1. ポップアップから DeepL Free API キーを保存します。
+2. モードを選びます。**Hover** は対象の段落にホバーすると自動で翻訳し、**Selection** は選択したテキストをショートカットまたはマウスアップ後に自動翻訳します。
+3. Hover Translate がテキストの言語 (日本語 ⇄ 英語) を自動判定し、翻訳結果をテキストの近くにフローティングツールチップで表示します。
 
 ## クイックスタート
 
 <CardGrid>
-  <LinkCard title="はじめに" href="/getting-started/">
+  <LinkCard title="はじめに" href="/hover-translate/ja/getting-started/">
     拡張機能の導入、DeepL API キーの取得、接続確認の手順を確認できます。
   </LinkCard>
-  <LinkCard title="機能" href="/features/">
-    言語の自動判定、キャッシュ、ツールチップ、クォータ、文字数制限の動作を確認できます。
+  <LinkCard title="機能" href="/hover-translate/ja/features/">
+    Hover / Selection モード、言語の自動判定、キャッシュ、ツールチップ、クォータの動作を確認できます。
   </LinkCard>
-  <LinkCard title="トラブルシューティング" href="/troubleshooting/">
+  <LinkCard title="トラブルシューティング" href="/hover-translate/ja/troubleshooting/">
     API キー、クォータ、ネットワーク、文字数制限の問題を解決できます。
   </LinkCard>
 </CardGrid>

@@ -57,18 +57,20 @@ Build the extension locally and load the generated `dist/` directory into Chrome
 1. Click the Hover Translate extension icon to open the popup.
 2. In the **Setup** section, paste the key into **DeepL API Key**.
 3. Click **Save**.
-4. Click **Test Connection**.
+4. Click **Test**.
 5. Confirm that the popup shows `Connection verified.`
 
 <Image src={popupSetup} alt="Popup setup screen with API key required banner" width={340} />
 
-## 4. Turn it on
+## 4. Turn it on and pick a mode
 
 1. In the **Translate** section, switch the extension to **ON**.
-2. Open any normal web page with English or Japanese text.
-3. Hover a paragraph or another text block.
-4. After roughly 300 ms, a translation tooltip should appear next to the element.
+2. Choose a mode:
+   - **Hover** — translate the nearest paragraph automatically when you hover over it.
+   - **Selection** — translate only the text you highlight. When Selection is active, a second switch appears to choose between **Shortcut** (`Alt+Shift+T`) and **Auto** (translate on mouse release).
+3. Open any normal web page with English or Japanese text and try your chosen mode.
+4. A translation tooltip appears next to the source text.
 
-<Image src={popupActive} alt="Popup active state with verified connection and translation enabled" width={340} />
+<Image src={popupActive} alt="Popup active state with Selection mode and Shortcut trigger" width={340} />
 
-If the tooltip does not appear or the popup reports an error, continue with the [Troubleshooting](/troubleshooting/) guide.
+If the tooltip does not appear or the popup reports an error, continue with the [Troubleshooting](/hover-translate/troubleshooting/) guide.
