@@ -1,0 +1,84 @@
+---
+title: Features
+description: Explore the core translation and usability features.
+---
+
+import { Image } from "astro:assets";
+import popupActive from "../../assets/screenshots/popup-active.png";
+import popupQuotaDanger from "../../assets/screenshots/popup-quota-danger.png";
+
+# Features
+
+Hover Translate is designed around short reading interruptions: hover a block, read the translation, and keep moving. The extension keeps the interface narrow and relies on DeepL Free for the translation step.
+
+## Automatic language detection
+
+Hover Translate decides the translation direction from the hovered text itself.
+
+- If the text contains Japanese characters, the extension sends it as `JA` and requests English output.
+- If the text does not contain Japanese characters, the extension assumes English input and requests Japanese output.
+- You do not need to toggle the source language manually.
+
+```ts
+/[\u3040-\u30ff\u4e00-\u9fff]/
+```
+
+This expression checks for Hiragana, Katakana, and Kanji before the request is sent to DeepL.
+
+## Block-level detection
+
+The extension translates the nearest block element instead of a single word fragment.
+
+- Supported targets include `p`, `li`, `h1` to `h6`, `td`, `blockquote`, `article`, `section`, `div`, `main`, `aside`, `figcaption`, `dd`, and `dt`.
+- This usually produces a full sentence or paragraph, which gives DeepL more context than isolated words.
+- A 300 ms hover delay reduces accidental requests when the cursor simply passes over the page.
+
+## In-page tooltip
+
+Translations appear in a floating tooltip positioned close to the hovered element.
+
+- The tooltip uses `position: fixed`, so it stays anchored relative to the viewport.
+- Its placement adjusts when you are near the edges of the screen.
+- The tooltip disappears when the hover state ends.
+- Error tooltips are visually separated with a red left border and the corresponding message.
+
+## LRU translation cache
+
+Hover Translate avoids re-translating identical blocks during the same service worker session.
+
+- The background service worker keeps a 100-entry least-recently-used cache.
+- Repeated hovers on the same text can be served immediately from cache.
+- This reduces request volume and helps preserve the monthly DeepL Free quota.
+- The cache is best-effort only. When the service worker restarts, the in-memory cache is cleared.
+
+## Keyboard shortcut
+
+The default shortcut is `Alt+Shift+T`.
+
+- Pressing it toggles Hover Translate on or off from any normal page.
+- After the toggle, the active tab shows a toast in the top-right corner: `Hover Translate: ON` or `Hover Translate: OFF`.
+- If you prefer a different key combination, use the **Change** link in the popup to open `chrome://extensions/shortcuts`.
+
+## Quota display
+
+The popup includes a dedicated quota section for DeepL usage.
+
+- Each time you open the popup, the extension requests current usage from DeepL's `/v2/usage` endpoint.
+- The result is shown as a progress bar.
+- Above 80%, the bar changes to an amber warning state.
+- Above 95%, it changes again to a red danger state.
+- Use **Refresh** to fetch the latest usage without closing the popup.
+
+<div class="doc-screenshot-pair">
+  <Image src={popupActive} alt="Popup showing normal quota state at 38 percent" width={340} />
+  <Image src={popupQuotaDanger} alt="Popup showing danger quota state at 97 percent" width={340} />
+</div>
+
+## Max character guardrail
+
+Very large blocks are stopped before they reach the translation API.
+
+- The default limit is 1500 characters.
+- You can change the limit anywhere from 500 to 5000 characters in **Settings**.
+- When a hovered block exceeds the current limit, the content script skips the request and shows a `Text too long` message instead.
+- Lowering the limit can save quota on pages with very large paragraphs or tables.

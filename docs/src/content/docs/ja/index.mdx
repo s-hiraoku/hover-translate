@@ -1,0 +1,64 @@
+---
+title: Hover Translate
+description: ホバーしたブロック単位のテキストを英語⇄日本語で即座に翻訳。
+template: splash
+hero:
+  tagline: ブロックにホバーするだけ。英語⇄日本語を瞬時に。
+  actions:
+    - text: はじめに
+      link: /ja/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: GitHubで見る
+      link: https://github.com/s-hiraoku/hover-translate
+      icon: external
+---
+
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components";
+import { Image } from "astro:assets";
+import popupActive from "../../../assets/screenshots/popup-active.png";
+
+## 特徴
+
+DeepL Free API を使い、ホバーしたテキストブロックを即座に翻訳する軽量 Chrome 拡張機能です。
+
+<CardGrid>
+  <Card title="高速" icon="rocket">
+    300msデバウンス、LRUキャッシュ、DeepL バックエンド。
+  </Card>
+  <Card title="自動言語判定" icon="translate">
+    英語か日本語かを自動判定。切り替え不要。
+  </Card>
+  <Card title="プライベート" icon="seti:lock">
+    APIキーは chrome.storage.local にのみ保存。
+  </Card>
+  <Card title="キーボード操作" icon="keyboard">
+    Alt+Shift+T でどこからでも ON/OFF。
+  </Card>
+</CardGrid>
+
+Hover Translate は、英語と日本語が混在するページをより少ない操作で読めるようにする Chrome 拡張機能です。段落やリスト項目などにホバーするだけで、その場に翻訳ツールチップを表示します。
+
+<Image src={popupActive} alt="Hover Translate のポップアップが有効な状態" width={340} />
+
+## 動作の流れ
+
+1. ページ上の段落や対応するブロック要素にホバーします。
+2. Hover Translate がテキスト内に日本語文字が含まれるかどうかを確認し、翻訳方向を自動で選びます。
+3. 翻訳結果が、ホバーした要素の近くにフローティングツールチップとして表示されます。
+
+## クイックスタート
+
+<CardGrid>
+  <LinkCard title="はじめに" href="/getting-started/">
+    拡張機能の導入、DeepL API キーの取得、接続確認の手順を確認できます。
+  </LinkCard>
+  <LinkCard title="機能" href="/features/">
+    言語の自動判定、キャッシュ、ツールチップ、クォータ、文字数制限の動作を確認できます。
+  </LinkCard>
+  <LinkCard title="トラブルシューティング" href="/troubleshooting/">
+    API キー、クォータ、ネットワーク、文字数制限の問題を解決できます。
+  </LinkCard>
+</CardGrid>
+
+DeepL API Free を利用しています。Hover Translate は API キーをローカルに保存し、トラッキングは行いません。

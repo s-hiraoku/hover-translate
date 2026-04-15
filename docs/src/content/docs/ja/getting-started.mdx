@@ -1,0 +1,65 @@
+---
+title: はじめに
+description: 拡張機能をインストールし、DeepL API キーを接続します。
+---
+
+import { Image } from "astro:assets";
+import popupSetup from "../../../assets/screenshots/popup-setup.png";
+import popupActive from "../../../assets/screenshots/popup-active.png";
+
+# はじめに
+
+このガイドでは、Hover Translate のインストール、無料の DeepL API キーの取得、拡張機能が正しく動作することの確認までを説明します。
+
+## 1. 拡張機能をインストールする
+
+まず拡張機能をローカルでビルドし、生成された `dist/` ディレクトリを Chrome に読み込みます。
+
+1. 依存関係をインストールします。
+
+   ```bash
+   pnpm install
+   ```
+
+2. 拡張機能をビルドします。
+
+   ```bash
+   pnpm build
+   ```
+
+3. `chrome://extensions/` を開きます。
+4. **デベロッパーモード** を有効にします。
+5. **パッケージ化されていない拡張機能を読み込む** をクリックします。
+6. このプロジェクトの `dist/` ディレクトリを選択します。
+
+> ヒント: 将来的には Chrome Web Store での配布も予定していますが、現時点での導入方法は `Load unpacked` による読み込みです。
+
+## 2. 無料の DeepL API キーを取得する
+
+1. [DeepL API plans](https://www.deepl.com/pro-api) にアクセスします。
+2. **DeepL API Free** プランに登録します。
+3. 登録後、DeepL のアカウント設定を開きます。
+4. **API Keys** セクションで API キーを確認し、コピーします。
+
+> 注記: DeepL Free は本人確認のためにクレジットカード登録を求めますが、月 500,000 文字までの利用であれば課金されません。
+
+## 3. API キーを接続する
+
+1. Hover Translate の拡張機能アイコンをクリックし、ポップアップを開きます。
+2. **Setup** セクションの **DeepL API Key** にキーを貼り付けます。
+3. **Save** をクリックします。
+4. **Test Connection** をクリックします。
+5. ポップアップに `Connection verified.` と表示されれば接続成功です。
+
+<Image src={popupSetup} alt="API key required バナーが表示されたポップアップ設定画面" width={340} />
+
+## 4. 有効にする
+
+1. **Translate** セクションで拡張機能を **ON** に切り替えます。
+2. 英文または日本語文を含む通常の Web ページを開きます。
+3. 段落やその他のテキストブロックにホバーします。
+4. およそ 300 ms 後に、要素の近くへ翻訳ツールチップが表示されます。
+
+<Image src={popupActive} alt="接続確認済みで翻訳が有効なポップアップ画面" width={340} />
+
+ツールチップが表示されない場合やポップアップにエラーが出る場合は、[トラブルシューティング](/troubleshooting/) を参照してください。

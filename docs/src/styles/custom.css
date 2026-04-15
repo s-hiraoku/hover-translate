@@ -1,0 +1,166 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..800,50&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap");
+
+:root {
+  --sl-color-accent-low: #fdeaea;
+  --sl-color-accent: #e85d5d;
+  --sl-color-accent-high: #c04141;
+
+  --sl-color-white: #1a1a1a;
+  --sl-color-gray-1: #3c3a33;
+  --sl-color-gray-2: #6b6859;
+  --sl-color-gray-3: #a8a496;
+  --sl-color-gray-4: #d8d2bf;
+  --sl-color-gray-5: #e5dfcb;
+  --sl-color-gray-6: #eee8d9;
+  --sl-color-gray-7: #f5f1e8;
+  --sl-color-black: #f5f1e8;
+
+  --sl-font: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --sl-font-system: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sl-font-system-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #4a1c1c;
+  --sl-color-accent: #ff6b6b;
+  --sl-color-accent-high: #ff8e8e;
+
+  --sl-color-white: #f2ede0;
+  --sl-color-gray-1: #d4cfc2;
+  --sl-color-gray-2: #8f8b7e;
+  --sl-color-gray-3: #5a5650;
+  --sl-color-gray-4: #2c2a28;
+  --sl-color-gray-5: #24221f;
+  --sl-color-gray-6: #1f1f22;
+  --sl-color-gray-7: #18181a;
+  --sl-color-black: #0f0f11;
+}
+
+body {
+  background: var(--sl-color-gray-7);
+  background-image: radial-gradient(rgba(26, 26, 26, 0.025) 1px, transparent 1px);
+  background-size: 3px 3px;
+  font-feature-settings: "ss01", "cv11";
+}
+
+:root[data-theme="dark"] body {
+  background-image: radial-gradient(rgba(242, 237, 224, 0.03) 1px, transparent 1px);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4 {
+  font-family: "Fraunces", "Iowan Old Style", "Charter", Georgia, "Noto Serif JP", serif;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 48, "SOFT" 30;
+}
+
+.sl-markdown-content h1 {
+  font-size: 2.4rem;
+}
+
+.sl-markdown-content h2 {
+  font-size: 1.6rem;
+  margin-top: 2.4rem;
+}
+
+.sl-markdown-content h3 {
+  font-size: 1.2rem;
+  margin-top: 1.8rem;
+}
+
+.hero h1,
+[data-has-hero] h1 {
+  font-variation-settings: "opsz" 144, "SOFT" 50;
+  font-weight: 400;
+}
+
+.site-title {
+  color: var(--sl-color-accent);
+  font-family: "Fraunces", "Iowan Old Style", Georgia, serif;
+  font-weight: 500;
+  font-size: 1.1rem;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+
+.sl-markdown-content a:not(.sl-link-card):not(.button) {
+  color: var(--sl-color-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(232, 93, 93, 0.4);
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+.sl-markdown-content a:not(.sl-link-card):not(.button):hover {
+  color: var(--sl-color-accent-high);
+  text-decoration-color: var(--sl-color-accent);
+}
+
+.sl-markdown-content :not(pre) > code {
+  background: rgba(232, 93, 93, 0.08);
+  color: var(--sl-color-accent-high);
+  padding: 1px 6px;
+  border: 1px solid rgba(232, 93, 93, 0.15);
+  border-radius: 3px;
+  font-size: 0.88em;
+}
+
+:root[data-theme="dark"] .sl-markdown-content :not(pre) > code {
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--sl-color-accent-high);
+  border-color: rgba(255, 107, 107, 0.2);
+}
+
+.card {
+  border-color: var(--sl-color-gray-4);
+  background: var(--sl-color-gray-6);
+}
+
+.card .icon {
+  color: var(--sl-color-accent);
+}
+
+.sl-markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--sl-color-gray-4);
+  margin: 2.2rem 0;
+}
+
+.sl-markdown-content img[alt*="popup"],
+.sl-markdown-content img[alt*="Popup"],
+.sl-markdown-content img[alt*="ポップアップ"] {
+  display: block;
+  max-width: 340px;
+  margin: 1.5rem auto;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(20, 15, 5, 0.18), 0 2px 8px rgba(20, 15, 5, 0.08);
+}
+
+:root[data-theme="dark"] .sl-markdown-content img[alt*="popup"],
+:root[data-theme="dark"] .sl-markdown-content img[alt*="Popup"],
+:root[data-theme="dark"] .sl-markdown-content img[alt*="ポップアップ"] {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.doc-screenshot-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+  margin: 1.5rem 0;
+}
+
+.doc-screenshot-pair picture,
+.doc-screenshot-pair img {
+  width: 100%;
+}

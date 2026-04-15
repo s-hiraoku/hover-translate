@@ -1,0 +1,69 @@
+---
+title: 設定
+description: 拡張機能の設定項目と構成方法を確認できます。
+---
+
+import { Image } from "astro:assets";
+import popupQuotaDanger from "../../../assets/screenshots/popup-quota-danger.png";
+
+# 設定
+
+ポップアップ UI は、**Setup**、**Translate**、**Quota**、**Limits** の 4 つのセクションで構成されています。すべての設定は `chrome.storage.local` の `hoverTranslateState` キーに保存され、ブラウザを再起動しても保持されます。
+
+## Setup
+
+**Setup** (セットアップ) セクションでは、DeepL の認証情報を扱います。
+
+- **DeepL API Key** はパスワード形式の入力欄です。
+- **Save** を押すと、現在のキーが `chrome.storage.local` に保存されます。
+- **Test Connection** は DeepL の `/v2/usage` エンドポイントを呼び出し、キーの有効性とクォータ情報の取得可否を確認します。
+- キーがまだ保存されていない場合は、**Setup required** バナーが表示されます。
+- 接続テストで発生したエラーは、そのままポップアップ内に表示されます。
+
+## Translate
+
+**Translate** (翻訳) セクションでは、ホバー翻訳の有効・無効を切り替えます。
+
+- ON/OFF の切り替えは、有効な API キーを保存したあとに意味を持ちます。
+- 有効化されると、コンテンツスクリプトがホバーしたテキストを背景側の処理へ送れるようになります。
+- このセクションには、現在のショートカット表示も含まれます。
+- **Change** リンクを使うと、Chrome のショートカット設定ページを開いて別のキー組み合わせを割り当てられます。
+
+## Quota
+
+**Quota** (クォータ) セクションでは、DeepL Free の使用量を確認できます。
+
+- 利用量はプログレスバーで表示されます。
+- **Refresh** で手動更新できます。
+- バーの色はしきい値に応じて変わります。
+  - 通常時は OK
+  - 80% 超で Warn
+  - 95% 超で Danger
+
+長い文章を多く読む前に確認しておくと、月間の無料枠に近づいているかを把握しやすくなります。
+
+<Image src={popupQuotaDanger} alt="クォータが危険状態のポップアップ画面" width={340} />
+
+## Limits
+
+**Limits** (制限) セクションでは、1 回のホバーで送信できる文字数を決めます。
+
+- **Max characters per request** は 500 から 5000 の範囲で設定できます。
+- 既定値は 1500 です。
+- この値は `Text too long` エラーの判定基準にも使われます。
+- 値を小さくすると、大きなブロックを早めにスキップし、クォータの消費を抑えられます。
+
+## 保存される状態
+
+Hover Translate は `hoverTranslateState` の中に次のような値を保持します。
+
+```json
+{
+  "enabled": true,
+  "deeplApiKey": "your-key",
+  "targetEnglish": "EN-US",
+  "maxChars": 1500
+}
+```
+
+現在の実装では `targetEnglish` は `EN-US` 固定ですが、保存スキーマ上は `EN-GB` も表現できます。

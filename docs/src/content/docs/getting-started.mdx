@@ -1,0 +1,65 @@
+---
+title: Getting Started
+description: Install the extension and connect your DeepL API key.
+---
+
+import { Image } from "astro:assets";
+import popupSetup from "../../assets/screenshots/popup-setup.png";
+import popupActive from "../../assets/screenshots/popup-active.png";
+
+# Getting Started
+
+This guide will walk you through installing Hover Translate, getting a free DeepL API key, and verifying the extension works.
+
+## 1. Install the extension
+
+Build the extension locally and load the generated `dist/` directory into Chrome.
+
+1. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+2. Build the extension:
+
+   ```bash
+   pnpm build
+   ```
+
+3. Open `chrome://extensions/`.
+4. Enable **Developer mode**.
+5. Click **Load unpacked**.
+6. Select the project's `dist/` directory.
+
+> Tip: A Chrome Web Store release is planned later. Until then, `Load unpacked` is the supported installation path.
+
+## 2. Get a free DeepL API key
+
+1. Visit [DeepL API plans](https://www.deepl.com/pro-api).
+2. Sign up for the **DeepL API Free** plan.
+3. After signup, open your DeepL account settings.
+4. Locate the **API Keys** section and copy your key.
+
+> Note: DeepL Free requires a credit card for verification, but usage under 500,000 characters per month is not billed.
+
+## 3. Connect your key
+
+1. Click the Hover Translate extension icon to open the popup.
+2. In the **Setup** section, paste the key into **DeepL API Key**.
+3. Click **Save**.
+4. Click **Test Connection**.
+5. Confirm that the popup shows `Connection verified.`
+
+<Image src={popupSetup} alt="Popup setup screen with API key required banner" width={340} />
+
+## 4. Turn it on
+
+1. In the **Translate** section, switch the extension to **ON**.
+2. Open any normal web page with English or Japanese text.
+3. Hover a paragraph or another text block.
+4. After roughly 300 ms, a translation tooltip should appear next to the element.
+
+<Image src={popupActive} alt="Popup active state with verified connection and translation enabled" width={340} />
+
+If the tooltip does not appear or the popup reports an error, continue with the [Troubleshooting](/troubleshooting/) guide.

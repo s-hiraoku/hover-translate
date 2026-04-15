@@ -1,0 +1,64 @@
+---
+title: Hover Translate
+description: Hover any text block to translate between English and Japanese.
+template: splash
+hero:
+  tagline: Hover any block. English ⇄ Japanese, instantly.
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/s-hiraoku/hover-translate
+      icon: external
+---
+
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components";
+import { Image } from "astro:assets";
+import popupActive from "../../assets/screenshots/popup-active.png";
+
+## Why Hover Translate?
+
+A lightweight Chrome extension that translates paragraph-sized text blocks the moment you hover over them. Powered by the DeepL Free API.
+
+<CardGrid>
+  <Card title="Fast" icon="rocket">
+    300ms debounce, LRU cache, DeepL under the hood.
+  </Card>
+  <Card title="Bilingual" icon="translate">
+    Auto-detects English or Japanese — no toggling.
+  </Card>
+  <Card title="Private" icon="seti:lock">
+    Your API key stays in chrome.storage.local. That's it.
+  </Card>
+  <Card title="Keyboard-first" icon="keyboard">
+    Alt+Shift+T toggles translation anywhere.
+  </Card>
+</CardGrid>
+
+Hover Translate is a Chrome extension for reading bilingual pages with less friction. Hover a paragraph, list item, or other text block and the extension shows a translated tooltip in place.
+
+<Image src={popupActive} alt="Hover Translate popup in active state" width={340} />
+
+## How It Works
+
+1. Hover a paragraph or another supported block element on the page.
+2. Hover Translate checks whether the text contains Japanese characters and chooses the translation direction automatically.
+3. The translated text appears in a floating tooltip near the element you hovered.
+
+## Quick Start
+
+<CardGrid>
+  <LinkCard title="Getting Started" href="/getting-started/">
+    Install the extension, get a DeepL API key, and verify the connection.
+  </LinkCard>
+  <LinkCard title="Features" href="/features/">
+    Review language detection, caching, tooltips, quota handling, and limits.
+  </LinkCard>
+  <LinkCard title="Troubleshooting" href="/troubleshooting/">
+    Find fixes for API key, quota, network, and text length errors.
+  </LinkCard>
+</CardGrid>
+
+Built with DeepL API Free. Hover Translate stores your API key locally and never tracks you.

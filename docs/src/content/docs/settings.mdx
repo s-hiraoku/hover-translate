@@ -1,0 +1,69 @@
+---
+title: Settings
+description: Review the extension settings and configuration options.
+---
+
+import { Image } from "astro:assets";
+import popupQuotaDanger from "../../assets/screenshots/popup-quota-danger.png";
+
+# Settings
+
+The popup UI is divided into four sections: **Setup**, **Translate**, **Quota**, and **Limits**. All settings are stored in `chrome.storage.local` under the `hoverTranslateState` key and remain available after you restart the browser.
+
+## Setup
+
+The **Setup** section handles your DeepL credentials.
+
+- **DeepL API Key** is a password-style input field.
+- **Save** writes the current key to `chrome.storage.local`.
+- **Test Connection** calls DeepL's `/v2/usage` endpoint to confirm that the key is valid and that quota data can be read.
+- If no key is stored yet, the popup shows a **Setup required** banner.
+- Connection test errors are displayed directly in the popup so you can correct the key without opening Developer Tools.
+
+## Translate
+
+The **Translate** section controls whether hover translation is active.
+
+- The ON/OFF toggle becomes meaningful after you save a valid API key.
+- When enabled, content scripts can send hovered text to the background worker for translation.
+- The section also shows the current keyboard shortcut.
+- Use the **Change** link to open Chrome's shortcut settings page and assign a different key combination if needed.
+
+## Quota
+
+The **Quota** section shows how much of the DeepL Free allowance has been used.
+
+- Usage is rendered as a progress bar.
+- **Refresh** fetches the latest data on demand.
+- The bar changes color based on thresholds:
+  - OK for normal usage
+  - Warn above 80%
+  - Danger above 95%
+
+Checking quota before long reading sessions is useful if you are close to the monthly free limit.
+
+<Image src={popupQuotaDanger} alt="Popup quota section in danger state" width={340} />
+
+## Limits
+
+The **Limits** section defines how much text a single hover may send.
+
+- **Max characters per request** accepts values from 500 to 5000.
+- The default value is 1500.
+- This number is also used as the threshold for the `Text too long` error.
+- Lower values make the extension skip large blocks earlier, which can reduce quota consumption on dense pages.
+
+## Stored state
+
+Hover Translate keeps the following fields inside `hoverTranslateState`:
+
+```json
+{
+  "enabled": true,
+  "deeplApiKey": "your-key",
+  "targetEnglish": "EN-US",
+  "maxChars": 1500
+}
+```
+
+At present, `targetEnglish` is fixed to `EN-US`, although the stored schema also permits `EN-GB`.
