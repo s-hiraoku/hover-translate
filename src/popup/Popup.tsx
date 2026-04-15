@@ -330,6 +330,24 @@ export function Popup() {
         </div>
         <p className="hint">Range 500 – 5,000</p>
       </section>
+
+      <footer className="popup-footer">
+        <a
+          href="https://s-hiraoku.github.io/hover-translate/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          User guide
+        </a>
+        <span className="sep">·</span>
+        <a
+          href="https://github.com/s-hiraoku/hover-translate"
+          target="_blank"
+          rel="noreferrer"
+        >
+          GitHub
+        </a>
+      </footer>
     </div>
   );
 }
