@@ -7,11 +7,18 @@ import {
   messageForCode,
   normalizeState,
   readStorageState,
+  updateStorageState,
   type DeepLUsage,
   type GetUsageResponse,
+  type Mode,
+  type SelectionTrigger,
   type StorageState,
   type TestKeyResponse,
 } from "../shared/messages";
+
+let cachedUsage: DeepLUsage | undefined;
+let cachedUsageAt = 0;
+const USAGE_CACHE_TTL_MS = 30_000;
 
 function clampMaxChars(value: number): number {
   return Math.min(MAX_MAX_CHARS, Math.max(MIN_MAX_CHARS, value));
@@ -20,6 +27,10 @@ function clampMaxChars(value: number): number {
 export function Popup() {
   const [loaded, setLoaded] = useState(false);
   const [enabled, setEnabled] = useState(defaultState.enabled);
+  const [mode, setMode] = useState<Mode>(defaultState.mode);
+  const [selectionTrigger, setSelectionTrigger] = useState<SelectionTrigger>(
+    defaultState.selectionTrigger,
+  );
   const [shortcut, setShortcut] = useState<string | undefined>();
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [savedKey, setSavedKey] = useState<string | undefined>(defaultState.deeplApiKey);
@@ -33,6 +44,8 @@ export function Popup() {
   useEffect(() => {
     void readStorageState().then((state) => {
       setEnabled(state.enabled);
+      setMode(state.mode);
+      setSelectionTrigger(state.selectionTrigger);
       setApiKeyInput(state.deeplApiKey ?? "");
       setSavedKey(state.deeplApiKey);
       setMaxChars(state.maxChars);
@@ -51,6 +64,8 @@ export function Popup() {
 
       const state = normalizeState(changes[STORAGE_KEY]?.newValue as StorageState | undefined);
       setEnabled(state.enabled);
+      setMode(state.mode);
+      setSelectionTrigger(state.selectionTrigger);
       setSavedKey(state.deeplApiKey);
       setMaxChars(state.maxChars);
     };
@@ -73,34 +88,38 @@ export function Popup() {
 
   useEffect(() => {
     void chrome.commands.getAll().then((commands) => {
-      const toggleCommand = commands.find((command) => command.name === "toggle-enabled");
-      setShortcut(toggleCommand?.shortcut || undefined);
+      const translateSelectionCommand = commands.find(
+        (command) => command.name === "translate-selection",
+      );
+      setShortcut(translateSelectionCommand?.shortcut || undefined);
     });
   }, []);
 
-  async function updateStoredState(patch: Partial<StorageState>): Promise<StorageState> {
-    const current = await readStorageState();
-    const next = normalizeState({ ...current, ...patch });
-    await chrome.storage.local.set({ [STORAGE_KEY]: next });
-    return next;
-  }
+  async function refreshUsage(force = false) {
+    const now = Date.now();
+    if (!force && cachedUsage && now - cachedUsageAt < USAGE_CACHE_TTL_MS) {
+      setUsage(cachedUsage);
+      return;
+    }
 
-  async function refreshUsage() {
     setUsageLoading(true);
     try {
       const response = (await chrome.runtime.sendMessage({
         type: "GET_USAGE",
       })) as GetUsageResponse;
-      setUsage(response.ok ? response.usage : undefined);
-      setTestResult(
-        response.ok
-          ? undefined
-          : {
-              ok: false,
-              errorCode: response.errorCode ?? "UNKNOWN",
-              error: response.error,
-            },
-      );
+      if (response.ok && response.usage) {
+        cachedUsage = response.usage;
+        cachedUsageAt = now;
+        setUsage(response.usage);
+        setTestResult(undefined);
+      } else {
+        setUsage(undefined);
+        setTestResult({
+          ok: false,
+          errorCode: response.errorCode ?? "UNKNOWN",
+          error: response.error,
+        });
+      }
     } catch (err) {
       setUsage(undefined);
       setTestResult({
@@ -116,7 +135,9 @@ export function Popup() {
   async function saveApiKey() {
     setSaving(true);
     try {
-      const next = await updateStoredState({ deeplApiKey: apiKeyInput.trim() || undefined });
+      const next = await updateStorageState({ deeplApiKey: apiKeyInput.trim() || undefined });
+      cachedUsage = undefined;
+      cachedUsageAt = 0;
       setSavedKey(next.deeplApiKey);
       setApiKeyInput(next.deeplApiKey ?? "");
       setTestResult(undefined);
@@ -134,6 +155,8 @@ export function Popup() {
       })) as TestKeyResponse;
       setTestResult(response);
       if (response.ok) {
+        cachedUsage = response.usage;
+        cachedUsageAt = Date.now();
         setUsage(response.usage);
       }
     } catch (err) {
@@ -147,10 +170,6 @@ export function Popup() {
     }
   }
 
-  const toggle = () => {
-    void updateStoredState({ enabled: !enabled });
-  };
-
   const setupMissing = !savedKey;
   const usagePercent = usage
     ? Math.min(100, Math.round((usage.character_count / Math.max(1, usage.character_limit)) * 100))
@@ -161,8 +180,14 @@ export function Popup() {
     const parsed = Number(value);
     const nextValue = Number.isNaN(parsed) ? defaultState.maxChars : clampMaxChars(parsed);
     setMaxChars(nextValue);
-    void updateStoredState({ maxChars: nextValue });
+    void updateStorageState({ maxChars: nextValue });
   };
+
+  function subLabelForMode(currentMode: Mode, currentTrigger: SelectionTrigger): string {
+    if (currentMode === "hover") return "Hovering · live";
+    if (currentTrigger === "shortcut") return "Selection · ⌥⇧T";
+    return "Selection · auto";
+  }
 
   return (
     <div className="popup">
@@ -242,32 +267,85 @@ export function Popup() {
               {enabled ? "Active" : "Idle"}
             </span>
             <span className="sub">
-              {setupMissing ? "Save a key first" : enabled ? "Hovering · live" : "Press to enable"}
+              {setupMissing
+                ? "Save a key first"
+                : enabled
+                  ? subLabelForMode(mode, selectionTrigger)
+                  : "Press to enable"}
             </span>
           </div>
           <button
             type="button"
             className={`toggle ${enabled ? "on" : "off"}`}
-            onClick={toggle}
+            onClick={async () => {
+              const current = await readStorageState();
+              await updateStorageState({ enabled: !current.enabled });
+            }}
             disabled={!loaded || setupMissing}
             title={setupMissing ? "Save an API key first" : undefined}
-            aria-label={enabled ? "Disable hover translation" : "Enable hover translation"}
+            aria-label={enabled ? "Disable translation" : "Enable translation"}
           />
         </div>
-        <div className="shortcut">
-          <span className="label">Shortcut</span>
-          <span className={`kbd ${shortcut ? "" : "unset"}`}>{shortcut || "unset"}</span>
-          <a
-            className="change"
-            href="#"
-            onClick={(event) => {
-              event.preventDefault();
-              void chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
-            }}
-          >
-            Change
-          </a>
+        <div className="segment-group">
+          <span className="field-label">Mode</span>
+          <div className="segment">
+            <button
+              type="button"
+              className={`seg ${mode === "hover" ? "active" : ""}`}
+              onClick={() => void updateStorageState({ mode: "hover" })}
+              disabled={!enabled}
+            >
+              Hover
+            </button>
+            <button
+              type="button"
+              className={`seg ${mode === "selection" ? "active" : ""}`}
+              onClick={() => void updateStorageState({ mode: "selection" })}
+              disabled={!enabled}
+            >
+              Selection
+            </button>
+          </div>
         </div>
+        {mode === "selection" ? (
+          <div className="segment-group">
+            <span className="field-label">Trigger</span>
+            <div className="segment">
+              <button
+                type="button"
+                className={`seg ${selectionTrigger === "shortcut" ? "active" : ""}`}
+                onClick={() => void updateStorageState({ selectionTrigger: "shortcut" })}
+                disabled={!enabled}
+              >
+                Shortcut
+              </button>
+              <button
+                type="button"
+                className={`seg ${selectionTrigger === "auto" ? "active" : ""}`}
+                onClick={() => void updateStorageState({ selectionTrigger: "auto" })}
+                disabled={!enabled}
+              >
+                Auto
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {mode === "selection" && selectionTrigger === "shortcut" ? (
+          <div className="shortcut">
+            <span className="label">Shortcut</span>
+            <span className={`kbd ${shortcut ? "" : "unset"}`}>{shortcut || "unset"}</span>
+            <a
+              className="change"
+              href="#"
+              onClick={(event) => {
+                event.preventDefault();
+                void chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+              }}
+            >
+              Change
+            </a>
+          </div>
+        ) : null}
       </section>
 
       {!setupMissing ? (
@@ -296,7 +374,7 @@ export function Popup() {
               <button
                 type="button"
                 className="btn btn-ghost btn-tiny"
-                onClick={() => void refreshUsage()}
+                onClick={() => void refreshUsage(true)}
                 disabled={usageLoading}
               >
                 Refresh

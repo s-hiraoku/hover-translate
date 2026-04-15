@@ -1,8 +1,10 @@
 import type {
+  Mode,
+  SelectionTrigger,
   SourceLang,
   StorageState,
   TargetLang,
-  ToggleToastRequest,
+  TranslateSelectionRequest,
   TranslateRequest,
   TranslateResponse,
 } from "../shared/messages";
@@ -12,10 +14,12 @@ import {
   messageForCode,
   normalizeState,
   readStorageState,
+  resolveErrorMessage,
 } from "../shared/messages";
 
 const HOVER_DELAY_MS = 300;
-const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u4e00-\u9fff]/;
+const BACKGROUND_UNAVAILABLE_MSG = "Extension background is unavailable. Reload the page.";
+const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
 const BLOCK_SELECTOR = [
   "p",
   "li",
@@ -38,27 +42,25 @@ const BLOCK_SELECTOR = [
   "dt",
 ].join(",");
 
-let isEnabled = false;
+let enabled = false;
+let mode: Mode = "hover";
+let selectionTrigger: SelectionTrigger = "shortcut";
 let maxCharsLimit = defaultState.maxChars;
 let hoverTimer: number | null = null;
+let selectionTimer: number | null = null;
 let activeElement: HTMLElement | null = null;
-let activeAnchorRect: DOMRect | null = null;
+let currentGeneration = 0;
 const lastPointer = { x: 0, y: 0 };
-let toast: HTMLDivElement | null = null;
-let toastHideTimer: number | null = null;
-let toastRemoveTimer: number | null = null;
 
 const tooltip = createTooltip();
 
-void initialize();
+initialize();
 
-async function initialize(): Promise<void> {
-  const state = await readStorageState();
-  isEnabled = state.enabled;
-  maxCharsLimit = state.maxChars;
-
+function initialize(): void {
   document.addEventListener("mouseover", handleMouseOver);
   document.addEventListener("mouseout", handleMouseOut);
+  document.addEventListener("mouseup", handleMouseUp);
+  document.addEventListener("selectionchange", handleSelectionChange);
   document.addEventListener(
     "mousemove",
     (event) => {
@@ -74,13 +76,7 @@ async function initialize(): Promise<void> {
     }
 
     const nextState = normalizeState(changes[STORAGE_KEY]?.newValue as StorageState | undefined);
-    isEnabled = nextState.enabled;
-    maxCharsLimit = nextState.maxChars;
-
-    if (!isEnabled) {
-      clearHoverTimer();
-      clearActiveState();
-    }
+    applyState(nextState);
   });
 
   chrome.runtime.onMessage.addListener((message: unknown) => {
@@ -88,17 +84,55 @@ async function initialize(): Promise<void> {
       return;
     }
 
-    const msg = message as Partial<ToggleToastRequest>;
-    if (msg.type !== "TOGGLE_TOAST") {
+    const msg = message as Partial<TranslateSelectionRequest>;
+    if (msg.type !== "TRANSLATE_SELECTION") {
       return;
     }
 
-    showToast(msg.enabled ? "Hover Translate: ON" : "Hover Translate: OFF");
+    if (!enabled || mode !== "selection" || selectionTrigger !== "shortcut") {
+      return;
+    }
+
+    void translateCurrentSelection();
   });
+
+  void readStorageState().then(applyState);
+}
+
+function applyState(state: StorageState): void {
+  const changed =
+    enabled !== state.enabled ||
+    mode !== state.mode ||
+    selectionTrigger !== state.selectionTrigger;
+
+  enabled = state.enabled;
+  mode = state.mode;
+  selectionTrigger = state.selectionTrigger;
+  maxCharsLimit = state.maxChars;
+
+  if (changed) {
+    currentGeneration++;
+    clearActiveState();
+  }
+
+  if (!enabled) {
+    clearHoverTimer();
+    clearSelectionTimer();
+    return;
+  }
+
+  if (mode !== "hover") {
+    clearHoverTimer();
+    activeElement = null;
+  }
+
+  if (mode !== "selection" || selectionTrigger !== "auto") {
+    clearSelectionTimer();
+  }
 }
 
 function handleMouseOver(event: MouseEvent): void {
-  if (!isEnabled) {
+  if (!enabled || mode !== "hover") {
     return;
   }
 
@@ -108,18 +142,20 @@ function handleMouseOver(event: MouseEvent): void {
   }
 
   activeElement = block;
-  activeAnchorRect = null;
   lastPointer.x = event.clientX;
   lastPointer.y = event.clientY;
 
   clearHoverTimer();
   hoverTimer = window.setTimeout(() => {
-    activeAnchorRect = block.getBoundingClientRect();
     void translateAndShow(block);
   }, HOVER_DELAY_MS);
 }
 
 function handleMouseOut(event: MouseEvent): void {
+  if (mode !== "hover") {
+    return;
+  }
+
   if (!activeElement) {
     return;
   }
@@ -133,53 +169,96 @@ function handleMouseOut(event: MouseEvent): void {
   clearActiveState();
 }
 
-async function translateAndShow(element: HTMLElement): Promise<void> {
-  if (!isEnabled || activeElement !== element) {
+function handleMouseUp(): void {
+  if (!enabled || mode !== "selection" || selectionTrigger !== "auto") {
     return;
   }
 
-  const text = extractText(element);
-  if (!text) {
+  clearSelectionTimer();
+  selectionTimer = window.setTimeout(() => {
+    void translateCurrentSelection();
+  }, HOVER_DELAY_MS);
+}
+
+function handleSelectionChange(): void {
+  if (mode !== "selection") {
     return;
   }
+
+  if (!hasNonEmptySelection()) {
+    clearSelectionTimer();
+    clearActiveState();
+  }
+}
+
+async function requestTranslation(
+  text: string,
+): Promise<{ kind: "ok"; translated: string } | { kind: "error"; message: string }> {
+  const [source, target] = detectLanguages(text);
+  try {
+    const response = (await chrome.runtime.sendMessage({
+      type: "TRANSLATE",
+      text,
+      source,
+      target,
+    } satisfies TranslateRequest)) as TranslateResponse;
+
+    if (response.ok && response.translated) {
+      return { kind: "ok", translated: response.translated };
+    }
+    return { kind: "error", message: resolveErrorMessage(response, maxCharsLimit) };
+  } catch {
+    return { kind: "error", message: BACKGROUND_UNAVAILABLE_MSG };
+  }
+}
+
+async function translateAndShow(element: HTMLElement): Promise<void> {
+  if (!enabled || mode !== "hover" || activeElement !== element) return;
+
+  const generation = currentGeneration;
+  const text = extractText(element);
+  if (!text) return;
 
   if (text.length > maxCharsLimit) {
     showTooltip(messageForCode("TEXT_TOO_LONG", maxCharsLimit), element, { isError: true });
     return;
   }
 
-  const [source, target] = detectLanguages(text);
-  const request: TranslateRequest = {
-    type: "TRANSLATE",
-    text,
-    source,
-    target,
-  };
+  const result = await requestTranslation(text);
+  if (generation !== currentGeneration || activeElement !== element) return;
 
-  let response: TranslateResponse;
-  try {
-    response = (await chrome.runtime.sendMessage(request)) as TranslateResponse;
-  } catch (error: unknown) {
-    console.error("hover-translate sendMessage failed", error);
-    if (activeElement === element) {
-      showTooltip(messageForCode("NETWORK_ERROR"), element, { isError: true });
-    }
+  if (result.kind === "error") {
+    showTooltip(result.message, element, { isError: true });
+    return;
+  }
+  showTooltip(result.translated, element);
+}
+
+async function translateCurrentSelection(): Promise<void> {
+  if (!enabled || mode !== "selection") return;
+
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+
+  const text = selection.toString().replace(/\s+/g, " ").trim();
+  if (!text) return;
+
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  const generation = currentGeneration;
+
+  if (text.length > maxCharsLimit) {
+    showTooltipAtRect(messageForCode("TEXT_TOO_LONG", maxCharsLimit), rect, { isError: true });
     return;
   }
 
-  if (activeElement !== element) {
+  const result = await requestTranslation(text);
+  if (generation !== currentGeneration || !hasNonEmptySelection()) return;
+
+  if (result.kind === "error") {
+    showTooltipAtRect(result.message, rect, { isError: true });
     return;
   }
-
-  if (!response.ok || !response.translated) {
-    const message = response.errorCode
-      ? messageForCode(response.errorCode, maxCharsLimit)
-      : response.error ?? "Translation failed.";
-    showTooltip(message, element, { isError: true });
-    return;
-  }
-
-  showTooltip(response.translated, element);
+  showTooltipAtRect(result.translated, rect);
 }
 
 function findNearestTextBlock(target: EventTarget | null): HTMLElement | null {
@@ -202,7 +281,7 @@ function findNearestTextBlock(target: EventTarget | null): HTMLElement | null {
 }
 
 function extractText(element: HTMLElement): string {
-  return element.innerText.replace(/\s+/g, " ").trim();
+  return (element.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 function detectLanguages(text: string): [SourceLang, TargetLang] {
@@ -231,39 +310,18 @@ function createTooltip(): HTMLDivElement {
   return element;
 }
 
-function ensureToast(): HTMLDivElement {
-  if (toast) {
-    return toast;
-  }
-
-  const element = document.createElement("div");
-  element.setAttribute("data-hover-translate-toast", "true");
-  Object.assign(element.style, {
-    position: "fixed",
-    top: "16px",
-    right: "16px",
-    zIndex: "2147483647",
-    padding: "10px 14px",
-    borderRadius: "10px",
-    background: "rgba(17, 24, 39, 0.92)",
-    color: "#f9fafb",
-    fontSize: "13px",
-    fontWeight: "600",
-    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.28)",
-    pointerEvents: "none",
-    opacity: "0",
-    transform: "translateY(-8px)",
-    transition: "opacity 200ms ease, transform 200ms ease",
-    display: "none",
-  } satisfies Partial<CSSStyleDeclaration>);
-  document.documentElement.appendChild(element);
-  toast = element;
-  return element;
-}
-
 function showTooltip(
   text: string,
   element: HTMLElement,
+  options?: { isError?: boolean },
+): void {
+  const rect = element.getBoundingClientRect();
+  showTooltipAtRect(text, rect, options);
+}
+
+function showTooltipAtRect(
+  text: string,
+  rect: DOMRect,
   options?: { isError?: boolean },
 ): void {
   tooltip.textContent = text;
@@ -271,7 +329,6 @@ function showTooltip(
   tooltip.style.borderLeft = options?.isError ? "4px solid #ef4444" : "4px solid transparent";
   tooltip.style.display = "block";
 
-  const rect = activeElement === element && activeAnchorRect ? activeAnchorRect : element.getBoundingClientRect();
   const margin = 12;
   const maxLeft = Math.max(margin, window.innerWidth - tooltip.offsetWidth - margin);
   const preferredLeft = Math.min(rect.left, maxLeft);
@@ -290,36 +347,6 @@ function showTooltip(
   tooltip.style.top = `${Math.max(margin, top)}px`;
 }
 
-function showToast(text: string): void {
-  const element = ensureToast();
-  element.textContent = text;
-  element.style.display = "block";
-
-  requestAnimationFrame(() => {
-    element.style.opacity = "1";
-    element.style.transform = "translateY(0)";
-  });
-
-  if (toastHideTimer !== null) {
-    window.clearTimeout(toastHideTimer);
-    toastHideTimer = null;
-  }
-  if (toastRemoveTimer !== null) {
-    window.clearTimeout(toastRemoveTimer);
-    toastRemoveTimer = null;
-  }
-
-  toastHideTimer = window.setTimeout(() => {
-    element.style.opacity = "0";
-    element.style.transform = "translateY(-8px)";
-    toastRemoveTimer = window.setTimeout(() => {
-      element.style.display = "none";
-      toastRemoveTimer = null;
-    }, 300);
-    toastHideTimer = null;
-  }, 1200);
-}
-
 function clearHoverTimer(): void {
   if (hoverTimer !== null) {
     window.clearTimeout(hoverTimer);
@@ -327,9 +354,20 @@ function clearHoverTimer(): void {
   }
 }
 
+function clearSelectionTimer(): void {
+  if (selectionTimer !== null) {
+    window.clearTimeout(selectionTimer);
+    selectionTimer = null;
+  }
+}
+
+function hasNonEmptySelection(): boolean {
+  const selection = window.getSelection();
+  return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
+}
+
 function clearActiveState(): void {
   activeElement = null;
-  activeAnchorRect = null;
   tooltip.style.display = "none";
   delete tooltip.dataset.state;
   tooltip.style.borderLeft = "4px solid transparent";

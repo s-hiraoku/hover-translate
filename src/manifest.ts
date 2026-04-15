@@ -17,12 +17,12 @@ export default defineManifest({
     default_title: "Hover Translate",
   },
   commands: {
-    "toggle-enabled": {
+    "translate-selection": {
       suggested_key: {
         default: "Alt+Shift+T",
         mac: "Alt+Shift+T",
       },
-      description: "Toggle hover translation on/off",
+      description: "Translate the current text selection",
     },
   },
   content_scripts: [

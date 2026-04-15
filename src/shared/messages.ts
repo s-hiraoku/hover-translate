@@ -1,5 +1,7 @@
 export type SourceLang = "en" | "ja";
 export type TargetLang = "en" | "ja";
+export type Mode = "hover" | "selection";
+export type SelectionTrigger = "shortcut" | "auto";
 
 export interface TranslateRequest {
   type: "TRANSLATE";
@@ -17,6 +19,8 @@ export interface TranslateResponse {
 
 export interface StorageState {
   enabled: boolean;
+  mode: Mode;
+  selectionTrigger: SelectionTrigger;
   deeplApiKey?: string;
   targetEnglish: "EN-US" | "EN-GB";
   maxChars: number;
@@ -29,6 +33,8 @@ export const MAX_MAX_CHARS = 5000;
 
 export const defaultState: StorageState = {
   enabled: false,
+  mode: "hover",
+  selectionTrigger: "shortcut",
   targetEnglish: "EN-US",
   maxChars: DEFAULT_MAX_CHARS,
 };
@@ -73,9 +79,8 @@ export interface GetUsageRequest {
 
 export type GetUsageResponse = TestKeyResponse;
 
-export interface ToggleToastRequest {
-  type: "TOGGLE_TOAST";
-  enabled: boolean;
+export interface TranslateSelectionRequest {
+  type: "TRANSLATE_SELECTION";
 }
 
 export function normalizeState(stored: StorageState | undefined): StorageState {
@@ -91,6 +96,16 @@ export async function readStorageState(): Promise<StorageState> {
   return normalizeState(result[STORAGE_KEY] as StorageState | undefined);
 }
 
+export async function updateStorageState(
+  patch: Partial<StorageState>,
+): Promise<StorageState> {
+  const result = await chrome.storage.local.get(STORAGE_KEY);
+  const current = normalizeState(result[STORAGE_KEY] as StorageState | undefined);
+  const next = normalizeState({ ...current, ...patch });
+  await chrome.storage.local.set({ [STORAGE_KEY]: next });
+  return next;
+}
+
 interface ErrorResponse {
   ok: false;
   errorCode: TranslateErrorCode;
@@ -104,6 +119,14 @@ export function buildErrorResponse(err: unknown): ErrorResponse {
   }
   const error = err instanceof Error ? err.message : String(err);
   return { ok: false, errorCode: "UNKNOWN", error };
+}
+
+export function resolveErrorMessage(
+  response: TranslateResponse,
+  maxChars?: number,
+): string {
+  if (response.errorCode) return messageForCode(response.errorCode, maxChars);
+  return response.error ?? "Translation failed.";
 }
 
 export function messageForCode(code: TranslateErrorCode, maxChars?: number): string {

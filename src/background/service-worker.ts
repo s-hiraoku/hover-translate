@@ -1,19 +1,13 @@
 import type {
   GetUsageRequest,
   GetUsageResponse,
-  StorageState,
   TestKeyRequest,
   TestKeyResponse,
-  ToggleToastRequest,
+  TranslateSelectionRequest,
   TranslateRequest,
   TranslateResponse,
 } from "../shared/messages";
-import {
-  STORAGE_KEY,
-  buildErrorResponse,
-  defaultState,
-  readStorageState,
-} from "../shared/messages";
+import { STORAGE_KEY, buildErrorResponse, defaultState, readStorageState } from "../shared/messages";
 import { fetchUsage, translate } from "./translator";
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -25,21 +19,21 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.commands.onCommand.addListener((command) => {
-  if (command !== "toggle-enabled") return;
+  if (command !== "translate-selection") return;
 
   void (async () => {
     const current = await readStorageState();
-    const next: StorageState = { ...current, enabled: !current.enabled };
-    await chrome.storage.local.set({ [STORAGE_KEY]: next });
+    if (!current.enabled || current.mode !== "selection" || current.selectionTrigger !== "shortcut") {
+      return;
+    }
 
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (activeTab?.id !== undefined) {
       try {
-        const toastMessage: ToggleToastRequest = {
-          type: "TOGGLE_TOAST",
-          enabled: next.enabled,
+        const message: TranslateSelectionRequest = {
+          type: "TRANSLATE_SELECTION",
         };
-        await chrome.tabs.sendMessage(activeTab.id, toastMessage);
+        await chrome.tabs.sendMessage(activeTab.id, message);
       } catch {
         // Tabs without our content script (chrome://, web store) can't receive.
       }

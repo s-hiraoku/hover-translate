@@ -1,5 +1,5 @@
-import type { DeepLUsage, StorageState, TranslateRequest } from "../shared/messages";
-import { STORAGE_KEY, normalizeState, readStorageState } from "../shared/messages";
+import type { DeepLUsage, TranslateRequest } from "../shared/messages";
+import { readStorageState } from "../shared/messages";
 import { DeepLError, getUsage, translateText } from "./deepl-client";
 
 const CACHE_MAX = 100;
@@ -7,18 +7,6 @@ const CACHE_MAX = 100;
 // MV3 service workers can terminate at any time, so this cache is best-effort only.
 const cache = new Map<string, string>();
 
-let cachedState: StorageState | undefined;
-
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "local" || !(STORAGE_KEY in changes)) return;
-  cachedState = normalizeState(changes[STORAGE_KEY]?.newValue as StorageState | undefined);
-});
-
-async function readState(): Promise<StorageState> {
-  if (cachedState) return cachedState;
-  cachedState = await readStorageState();
-  return cachedState;
-}
 
 function cacheKey(source: TranslateRequest["source"], target: TranslateRequest["target"], text: string): string {
   return `${source}:${target}:${text}`;
@@ -43,7 +31,7 @@ function cacheSet(key: string, value: string): void {
 }
 
 export async function translate(req: TranslateRequest): Promise<string> {
-  const state = await readState();
+  const state = await readStorageState();
 
   if (!state.deeplApiKey) {
     throw new DeepLError("MISSING_KEY", "DeepL API key not set");
@@ -73,7 +61,7 @@ export async function translate(req: TranslateRequest): Promise<string> {
 }
 
 export async function fetchUsage(keyOverride?: string): Promise<DeepLUsage> {
-  const state = await readState();
+  const state = await readStorageState();
   const effectiveKey = keyOverride?.trim() || state.deeplApiKey;
 
   if (!effectiveKey) {

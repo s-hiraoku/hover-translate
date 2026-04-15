@@ -520,6 +520,56 @@ body::before {
   flex: 1;
 }
 
+.segment-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.segment {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.segment .seg {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-left: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 150ms var(--ease), color 150ms var(--ease);
+}
+
+.segment .seg:first-child {
+  border-left: none;
+}
+
+.segment .seg.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.segment .seg:hover:not(.active):not(:disabled) {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.segment .seg:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .toggle-label .status {
   font-family: var(--font-display);
   font-size: 16px;
