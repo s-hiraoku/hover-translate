@@ -91,18 +91,23 @@ export function normalizeState(stored: StorageState | undefined): StorageState {
   };
 }
 
+function storageArea(): chrome.storage.StorageArea {
+  return chrome.storage.sync ?? chrome.storage.local;
+}
+
 export async function readStorageState(): Promise<StorageState> {
-  const result = await chrome.storage.local.get(STORAGE_KEY);
+  const result = await storageArea().get(STORAGE_KEY);
   return normalizeState(result[STORAGE_KEY] as StorageState | undefined);
 }
 
 export async function updateStorageState(
   patch: Partial<StorageState>,
 ): Promise<StorageState> {
-  const result = await chrome.storage.local.get(STORAGE_KEY);
+  const area = storageArea();
+  const result = await area.get(STORAGE_KEY);
   const current = normalizeState(result[STORAGE_KEY] as StorageState | undefined);
   const next = normalizeState({ ...current, ...patch });
-  await chrome.storage.local.set({ [STORAGE_KEY]: next });
+  await area.set({ [STORAGE_KEY]: next });
   return next;
 }
 

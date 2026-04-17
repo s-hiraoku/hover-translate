@@ -58,7 +58,7 @@ export function Popup() {
       changes: Record<string, chrome.storage.StorageChange>,
       areaName: string,
     ) => {
-      if (areaName !== "local" || !(STORAGE_KEY in changes)) {
+      if ((areaName !== "sync" && areaName !== "local") || !(STORAGE_KEY in changes)) {
         return;
       }
 

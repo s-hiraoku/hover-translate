@@ -71,7 +71,7 @@ function initialize(): void {
   );
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local" || !(STORAGE_KEY in changes)) {
+    if ((areaName !== "sync" && areaName !== "local") || !(STORAGE_KEY in changes)) {
       return;
     }
 
@@ -141,10 +141,14 @@ function handleMouseOver(event: MouseEvent): void {
     return;
   }
 
-  activeElement = block;
   lastPointer.x = event.clientX;
   lastPointer.y = event.clientY;
 
+  if (activeElement === block) {
+    return;
+  }
+
+  activeElement = block;
   clearHoverTimer();
   hoverTimer = window.setTimeout(() => {
     if (!isCursorOverText(lastPointer.x, lastPointer.y)) {

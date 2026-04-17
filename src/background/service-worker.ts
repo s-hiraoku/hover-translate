@@ -11,11 +11,25 @@ import { STORAGE_KEY, buildErrorResponse, defaultState, readStorageState } from 
 import { fetchUsage, translate } from "./translator";
 
 chrome.runtime.onInstalled.addListener(() => {
-  void chrome.storage.local.get(STORAGE_KEY).then((result) => {
-    if (!result[STORAGE_KEY]) {
-      void chrome.storage.local.set({ [STORAGE_KEY]: defaultState });
+  void (async () => {
+    const syncArea = chrome.storage.sync ?? chrome.storage.local;
+    const [syncResult, localResult] = await Promise.all([
+      syncArea.get(STORAGE_KEY),
+      chrome.storage.local.get(STORAGE_KEY),
+    ]);
+
+    if (syncResult[STORAGE_KEY]) {
+      return;
     }
-  });
+
+    if (localResult[STORAGE_KEY]) {
+      await syncArea.set({ [STORAGE_KEY]: localResult[STORAGE_KEY] });
+      await chrome.storage.local.remove(STORAGE_KEY);
+      return;
+    }
+
+    await syncArea.set({ [STORAGE_KEY]: defaultState });
+  })();
 });
 
 chrome.commands.onCommand.addListener((command) => {

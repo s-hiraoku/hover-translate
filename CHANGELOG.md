@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.3] - 2026-04-18
+
+### Fixed
+
+- Hover translation no longer fails when the cursor moves between child elements (links, spans) inside the same paragraph — the hover timer is no longer reset on re-entering the same block.
+
+### Changed
+
+- Persist settings and the DeepL API key in `chrome.storage.sync` so they survive extension reinstall and sync across devices signed in to the same Chrome profile. Existing `chrome.storage.local` data is migrated automatically on first run.
+
 ## [1.0.2] - 2026-04-18
 
 ### Added
