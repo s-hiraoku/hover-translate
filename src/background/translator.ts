@@ -52,6 +52,7 @@ export async function translate(req: TranslateRequest): Promise<string> {
   const translated = await translateText({
     key: state.deeplApiKey,
     text: req.text,
+    context: req.context,
     sourceLang,
     targetLang,
   });

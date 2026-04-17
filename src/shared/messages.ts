@@ -6,6 +6,7 @@ export type SelectionTrigger = "shortcut" | "auto";
 export interface TranslateRequest {
   type: "TRANSLATE";
   text: string;
+  context?: string;
   source: SourceLang;
   target: TargetLang;
 }

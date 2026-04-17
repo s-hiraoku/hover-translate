@@ -61,6 +61,10 @@ function initialize(): void {
   document.addEventListener("mouseout", handleMouseOut);
   document.addEventListener("mouseup", handleMouseUp);
   document.addEventListener("selectionchange", handleSelectionChange);
+  window.addEventListener("scroll", hideTooltipOnScroll, {
+    capture: true,
+    passive: true,
+  });
   document.addEventListener(
     "mousemove",
     (event) => {
@@ -191,8 +195,16 @@ function handleMouseOut(event: MouseEvent): void {
   }
 
   const relatedTarget = event.relatedTarget;
-  if (relatedTarget instanceof Node && activeElement.contains(relatedTarget)) {
-    return;
+  if (relatedTarget instanceof Node) {
+    if (activeElement.contains(relatedTarget)) {
+      return;
+    }
+    if (
+      relatedTarget === tooltip ||
+      (relatedTarget instanceof HTMLElement && relatedTarget.dataset.hoverTranslateTooltip === "true")
+    ) {
+      return;
+    }
   }
 
   clearHoverTimer();
@@ -223,12 +235,14 @@ function handleSelectionChange(): void {
 
 async function requestTranslation(
   text: string,
+  context?: string,
 ): Promise<{ kind: "ok"; translated: string } | { kind: "error"; message: string }> {
   const [source, target] = detectLanguages(text);
   try {
     const response = (await chrome.runtime.sendMessage({
       type: "TRANSLATE",
       text,
+      context,
       source,
       target,
     } satisfies TranslateRequest)) as TranslateResponse;
@@ -254,7 +268,9 @@ async function translateAndShow(element: HTMLElement): Promise<void> {
     return;
   }
 
-  const result = await requestTranslation(text);
+  showTooltip("…", element);
+  const context = buildContext(element);
+  const result = await requestTranslation(text, context);
   if (generation !== currentGeneration || activeElement !== element) return;
 
   if (result.kind === "error") {
@@ -281,7 +297,9 @@ async function translateCurrentSelection(): Promise<void> {
     return;
   }
 
-  const result = await requestTranslation(text);
+  showTooltipAtRect("…", rect);
+  const context = buildSelectionContext(selection);
+  const result = await requestTranslation(text, context);
   if (generation !== currentGeneration || !hasNonEmptySelection()) return;
 
   if (result.kind === "error") {
@@ -339,6 +357,35 @@ function extractText(element: HTMLElement): string {
   return (element.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
+function buildContext(element: HTMLElement): string | undefined {
+  const parts: string[] = [];
+  const prev = element.previousElementSibling;
+  if (prev instanceof HTMLElement) {
+    const prevText = extractText(prev);
+    if (prevText) parts.push(prevText.slice(-500));
+  }
+
+  const next = element.nextElementSibling;
+  if (next instanceof HTMLElement) {
+    const nextText = extractText(next);
+    if (nextText) parts.push(nextText.slice(0, 500));
+  }
+
+  return parts.length > 0 ? parts.join("\n\n") : undefined;
+}
+
+function buildSelectionContext(selection: Selection): string | undefined {
+  if (selection.rangeCount === 0) return undefined;
+
+  const range = selection.getRangeAt(0);
+  const container = range.commonAncestorContainer;
+  const element = container instanceof HTMLElement ? container : container.parentElement;
+  if (!element) return undefined;
+
+  const block = element.closest(BLOCK_SELECTOR);
+  return block instanceof HTMLElement ? buildContext(block) : undefined;
+}
+
 function detectLanguages(text: string): [SourceLang, TargetLang] {
   return JAPANESE_TEXT_PATTERN.test(text) ? ["ja", "en"] : ["en", "ja"];
 }
@@ -357,7 +404,9 @@ function createTooltip(): HTMLDivElement {
     fontSize: "13px",
     lineHeight: "1.5",
     boxShadow: "0 10px 30px rgba(15, 23, 42, 0.28)",
-    pointerEvents: "none",
+    maxHeight: "60vh",
+    overflowY: "auto",
+    pointerEvents: "auto",
     whiteSpace: "pre-wrap",
     display: "none",
   } satisfies Partial<CSSStyleDeclaration>);
@@ -402,6 +451,18 @@ function showTooltipAtRect(
   tooltip.style.top = `${Math.max(margin, top)}px`;
 }
 
+function hideTooltipOnScroll(): void {
+  if (tooltip.style.display === "block") {
+    hideTooltip();
+  }
+}
+
+function hideTooltip(): void {
+  tooltip.style.display = "none";
+  delete tooltip.dataset.state;
+  tooltip.style.borderLeft = "4px solid transparent";
+}
+
 function clearHoverTimer(): void {
   if (hoverTimer !== null) {
     window.clearTimeout(hoverTimer);
@@ -423,7 +484,5 @@ function hasNonEmptySelection(): boolean {
 
 function clearActiveState(): void {
   activeElement = null;
-  tooltip.style.display = "none";
-  delete tooltip.dataset.state;
-  tooltip.style.borderLeft = "4px solid transparent";
+  hideTooltip();
 }

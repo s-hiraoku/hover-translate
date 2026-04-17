@@ -61,6 +61,7 @@ async function ensureOk(response: Response): Promise<Response> {
 export async function translateText(args: {
   key: string;
   text: string;
+  context?: string;
   sourceLang: "EN" | "JA";
   targetLang: "EN-US" | "EN-GB" | "JA";
 }): Promise<string> {
@@ -68,6 +69,11 @@ export async function translateText(args: {
   params.set("text", args.text);
   params.set("source_lang", args.sourceLang);
   params.set("target_lang", args.targetLang);
+  params.set("preserve_formatting", "1");
+  params.set("split_sentences", "nonewlines");
+  if (args.context) {
+    params.set("context", args.context);
+  }
 
   let response: Response;
   try {

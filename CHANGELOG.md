@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0] - 2026-04-18
+
+### Added
+
+- Send the adjacent paragraphs as DeepL `context` so the translation can take the surrounding discussion into account. Context is free on the DeepL side and noticeably lifts accuracy on short blocks.
+- Request `preserve_formatting=1` and `split_sentences=nonewlines` so DeepL keeps line breaks, bullet markers, and code-like structure instead of flattening them.
+- Show a `…` placeholder tooltip immediately after the hover or selection delay so the user sees that a request is in flight instead of silent waiting.
+
+### Changed
+
+- Tooltip now enforces a `max-height: 60vh` with internal scrolling so long translations stay readable on short viewports, and becomes interactive (`pointerEvents: auto`) so the scrollbar is usable.
+- The tooltip hides as soon as the page scrolls, so it no longer floats over the wrong anchor after a scroll.
+
 ## [1.0.3] - 2026-04-18
 
 ### Fixed
