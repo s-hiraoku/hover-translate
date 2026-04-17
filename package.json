@@ -1,13 +1,13 @@
 {
   "name": "hover-translate",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "zip": "vite build && cd dist && zip -r ../hover-translate.zip . -x '*.map' '*.DS_Store' '.synapse/*' '**/.synapse/*'",
+    "zip": "vite build && cd dist && zip -r ../hover-translate.zip . -x '*.map' '*.DS_Store' '.synapse/*' '**/.synapse/*' && cd .. && cp hover-translate.zip hover-translate-v$(node -e \"process.stdout.write(require('./package.json').version)\").zip",
     "prepare": "lefthook install"
   },
   "dependencies": {
