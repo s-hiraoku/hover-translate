@@ -14,26 +14,16 @@ This guide will walk you through installing Hover Translate, getting a free Deep
 
 ## 1. Install the extension
 
-Build the extension locally and load the generated `dist/` directory into Chrome.
+1. Open the [Hover Translate listing on the Chrome Web Store](https://chromewebstore.google.com/detail/hover-translate-%E8%8B%B1%E8%AA%9E-%E2%87%84-%E6%97%A5%E6%9C%AC%E8%AA%9E/opjkabnjpglbkdlkanjkpkcohmdcajmp).
+2. Click **Add to Chrome**, then confirm in the dialog.
+3. The Hover Translate icon appears in the Chrome toolbar when installation finishes.
 
-1. Install dependencies:
-
-   ```bash
-   pnpm install
-   ```
-
-2. Build the extension:
-
-   ```bash
-   pnpm build
-   ```
-
-3. Open `chrome://extensions/`.
-4. Enable **Developer mode**.
-5. Click **Load unpacked**.
-6. Select the project's `dist/` directory.
-
-> Tip: A Chrome Web Store release is planned later. Until then, `Load unpacked` is the supported installation path.
+<Aside type="note" title="Developer install (optional)">
+  If you prefer to run the extension from source — to try unreleased changes or
+  contribute — clone the [repository](https://github.com/s-hiraoku/hover-translate),
+  run `pnpm install` and `pnpm build`, then load the generated `dist/` directory
+  via `chrome://extensions/` → **Developer mode** → **Load unpacked**.
+</Aside>
 
 ## 2. Get a free DeepL API key
 

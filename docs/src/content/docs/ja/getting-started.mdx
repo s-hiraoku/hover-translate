@@ -14,26 +14,13 @@ import popupActive from "../../../assets/screenshots/popup-active.png";
 
 ## 1. 拡張機能をインストールする
 
-まず拡張機能をローカルでビルドし、生成された `dist/` ディレクトリを Chrome に読み込みます。
+1. [Chrome ウェブストアの Hover Translate ページ](https://chromewebstore.google.com/detail/hover-translate-%E8%8B%B1%E8%AA%9E-%E2%87%84-%E6%97%A5%E6%9C%AC%E8%AA%9E/opjkabnjpglbkdlkanjkpkcohmdcajmp?hl=ja) を開きます。
+2. **Chrome に追加** をクリックし、確認ダイアログで承認します。
+3. インストールが完了すると、Chrome のツールバーに Hover Translate のアイコンが表示されます。
 
-1. 依存関係をインストールします。
-
-   ```bash
-   pnpm install
-   ```
-
-2. 拡張機能をビルドします。
-
-   ```bash
-   pnpm build
-   ```
-
-3. `chrome://extensions/` を開きます。
-4. **デベロッパーモード** を有効にします。
-5. **パッケージ化されていない拡張機能を読み込む** をクリックします。
-6. このプロジェクトの `dist/` ディレクトリを選択します。
-
-> ヒント: 将来的には Chrome Web Store での配布も予定していますが、現時点での導入方法は `Load unpacked` による読み込みです。
+<Aside type="note" title="開発者向けインストール (任意)">
+  最新の未リリース変更を試したい、あるいは開発に参加したい場合は、[リポジトリ](https://github.com/s-hiraoku/hover-translate) をクローンし、`pnpm install` と `pnpm build` を実行してから、`chrome://extensions/` の **デベロッパーモード** を有効にして **パッケージ化されていない拡張機能を読み込む** で生成された `dist/` ディレクトリを指定してください。
+</Aside>
 
 ## 2. 無料の DeepL API キーを取得する
 
