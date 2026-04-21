@@ -159,6 +159,13 @@ function handleMouseOver(event: MouseEvent): void {
     return;
   }
 
+  if (
+    event.target instanceof Element &&
+    event.target.closest(`[${TOOLTIP_ATTR}="true"]`)
+  ) {
+    return;
+  }
+
   const block = findNearestTextBlock(event.target);
   if (!block) {
     return;
@@ -510,6 +517,15 @@ async function copyTooltipText(): Promise<void> {
 }
 
 function copyTextWithExecCommand(text: string): boolean {
+  const previousActive =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const selection = window.getSelection();
+  const ranges = selection
+    ? Array.from({ length: selection.rangeCount }, (_, index) =>
+        selection.getRangeAt(index).cloneRange(),
+      )
+    : [];
+
   const textarea = document.createElement("textarea");
   textarea.value = text;
   textarea.setAttribute("readonly", "true");
@@ -521,10 +537,20 @@ function copyTextWithExecCommand(text: string): boolean {
   } satisfies Partial<CSSStyleDeclaration>);
 
   document.documentElement.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand("copy");
-  textarea.remove();
-  return copied;
+  try {
+    textarea.focus();
+    textarea.select();
+    return document.execCommand("copy");
+  } finally {
+    textarea.remove();
+    if (selection) {
+      selection.removeAllRanges();
+      for (const range of ranges) {
+        selection.addRange(range);
+      }
+    }
+    previousActive?.focus({ preventScroll: true });
+  }
 }
 
 function setCopyButtonState(next: CopyButtonState): void {
@@ -548,6 +574,7 @@ function setCopyButtonState(next: CopyButtonState): void {
   if (next === "copied") {
     copyButton.innerHTML = CHECK_ICON_SVG;
     copyButton.title = "Copied";
+    copyButton.setAttribute("aria-label", "Copied");
     copiedStateTimeout = window.setTimeout(() => {
       copiedStateTimeout = null;
       setCopyButtonState("idle");
@@ -555,6 +582,7 @@ function setCopyButtonState(next: CopyButtonState): void {
   } else {
     copyButton.innerHTML = COPY_ICON_SVG;
     copyButton.title = "Copy";
+    copyButton.setAttribute("aria-label", "Copy translation");
   }
 }
 
