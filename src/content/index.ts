@@ -51,6 +51,20 @@ let selectionTimer: number | null = null;
 let activeElement: HTMLElement | null = null;
 let currentGeneration = 0;
 const lastPointer = { x: 0, y: 0 };
+const COPY_ICON_SVG = `
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>
+`;
+const CHECK_ICON_SVG = `
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+`;
+let tooltipContent: HTMLDivElement;
+let copyButton: HTMLButtonElement;
+let copiedStateTimeout: number | null = null;
 
 const tooltip = createTooltip();
 
@@ -200,8 +214,8 @@ function handleMouseOut(event: MouseEvent): void {
       return;
     }
     if (
-      relatedTarget === tooltip ||
-      (relatedTarget instanceof HTMLElement && relatedTarget.dataset.hoverTranslateTooltip === "true")
+      relatedTarget instanceof Element &&
+      relatedTarget.closest('[data-hover-translate-tooltip="true"]')
     ) {
       return;
     }
@@ -410,8 +424,127 @@ function createTooltip(): HTMLDivElement {
     whiteSpace: "pre-wrap",
     display: "none",
   } satisfies Partial<CSSStyleDeclaration>);
+
+  tooltipContent = document.createElement("div");
+  tooltipContent.setAttribute("data-hover-translate-tooltip", "true");
+  Object.assign(tooltipContent.style, {
+    paddingRight: "24px",
+  } satisfies Partial<CSSStyleDeclaration>);
+
+  copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.setAttribute("data-hover-translate-tooltip", "true");
+  copyButton.setAttribute("aria-label", "Copy translation");
+  copyButton.title = "Copy";
+  copyButton.innerHTML = COPY_ICON_SVG;
+  Object.assign(copyButton.style, {
+    position: "absolute",
+    top: "6px",
+    right: "6px",
+    width: "24px",
+    height: "24px",
+    display: "none",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "4px",
+    border: "0",
+    borderRadius: "6px",
+    background: "transparent",
+    color: "#f9fafb",
+    cursor: "pointer",
+  } satisfies Partial<CSSStyleDeclaration>);
+  copyButton.addEventListener("mouseenter", () => {
+    copyButton.style.background = "rgba(255,255,255,0.12)";
+  });
+  copyButton.addEventListener("mouseleave", () => {
+    copyButton.style.background = "transparent";
+  });
+  copyButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void copyTooltipText();
+  });
+  for (const eventName of [
+    "mousedown",
+    "mouseup",
+    "mouseover",
+    "mouseout",
+    "pointerdown",
+    "pointerup",
+    "pointerover",
+    "pointerout",
+  ]) {
+    copyButton.addEventListener(eventName, (event) => {
+      event.stopPropagation();
+    });
+  }
+
+  element.append(tooltipContent, copyButton);
   document.documentElement.appendChild(element);
   return element;
+}
+
+async function copyTooltipText(): Promise<void> {
+  const text = tooltipContent.textContent ?? "";
+  if (!text.trim() || text === "…") {
+    return;
+  }
+
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard API unavailable");
+    }
+    await navigator.clipboard.writeText(text);
+  } catch {
+    if (!copyTextWithExecCommand(text)) {
+      return;
+    }
+  }
+
+  showCopiedState();
+}
+
+function copyTextWithExecCommand(text: string): boolean {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  Object.assign(textarea.style, {
+    position: "fixed",
+    top: "-9999px",
+    left: "-9999px",
+    opacity: "0",
+  } satisfies Partial<CSSStyleDeclaration>);
+
+  document.documentElement.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  return copied;
+}
+
+function showCopiedState(): void {
+  clearCopiedStateTimeout();
+
+  copyButton.innerHTML = CHECK_ICON_SVG;
+  copyButton.title = "Copied";
+  copiedStateTimeout = window.setTimeout(() => {
+    copyButton.innerHTML = COPY_ICON_SVG;
+    copyButton.title = "Copy";
+    copiedStateTimeout = null;
+  }, 1200);
+}
+
+function resetCopyButtonState(): void {
+  clearCopiedStateTimeout();
+  copyButton.innerHTML = COPY_ICON_SVG;
+  copyButton.title = "Copy";
+}
+
+function clearCopiedStateTimeout(): void {
+  if (copiedStateTimeout !== null) {
+    window.clearTimeout(copiedStateTimeout);
+    copiedStateTimeout = null;
+  }
 }
 
 function showTooltip(
@@ -428,9 +561,11 @@ function showTooltipAtRect(
   rect: DOMRect,
   options?: { isError?: boolean },
 ): void {
-  tooltip.textContent = text;
+  tooltipContent.textContent = text;
   tooltip.dataset.state = options?.isError ? "error" : "ok";
   tooltip.style.borderLeft = options?.isError ? "4px solid #ef4444" : "4px solid transparent";
+  resetCopyButtonState();
+  copyButton.style.display = options?.isError || text === "…" ? "none" : "flex";
   tooltip.style.display = "block";
 
   const margin = 12;
@@ -461,6 +596,8 @@ function hideTooltip(): void {
   tooltip.style.display = "none";
   delete tooltip.dataset.state;
   tooltip.style.borderLeft = "4px solid transparent";
+  resetCopyButtonState();
+  copyButton.style.display = "none";
 }
 
 function clearHoverTimer(): void {
