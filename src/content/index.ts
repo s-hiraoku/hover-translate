@@ -21,6 +21,9 @@ const HOVER_DELAY_MS = 300;
 const BACKGROUND_UNAVAILABLE_MSG = "Extension background is unavailable. Reload the page.";
 const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
 const MIN_TEXT_LENGTH = 3;
+const TOOLTIP_ATTR = "data-hover-translate-tooltip";
+const LOADING_INDICATOR = "…";
+const COPIED_STATE_DURATION_MS = 1200;
 const BLOCK_SELECTOR = [
   "p",
   "li",
@@ -62,8 +65,10 @@ const CHECK_ICON_SVG = `
     <polyline points="20 6 9 17 4 12"></polyline>
   </svg>
 `;
+type CopyButtonState = "idle" | "copied" | "hidden";
 let tooltipContent: HTMLDivElement;
 let copyButton: HTMLButtonElement;
+let copyButtonState: CopyButtonState = "hidden";
 let copiedStateTimeout: number | null = null;
 
 const tooltip = createTooltip();
@@ -215,7 +220,7 @@ function handleMouseOut(event: MouseEvent): void {
     }
     if (
       relatedTarget instanceof Element &&
-      relatedTarget.closest('[data-hover-translate-tooltip="true"]')
+      relatedTarget.closest(`[${TOOLTIP_ATTR}="true"]`)
     ) {
       return;
     }
@@ -282,7 +287,7 @@ async function translateAndShow(element: HTMLElement): Promise<void> {
     return;
   }
 
-  showTooltip("…", element);
+  showTooltip(LOADING_INDICATOR, element);
   const context = buildContext(element);
   const result = await requestTranslation(text, context);
   if (generation !== currentGeneration || activeElement !== element) return;
@@ -311,7 +316,7 @@ async function translateCurrentSelection(): Promise<void> {
     return;
   }
 
-  showTooltipAtRect("…", rect);
+  showTooltipAtRect(LOADING_INDICATOR, rect);
   const context = buildSelectionContext(selection);
   const result = await requestTranslation(text, context);
   if (generation !== currentGeneration || !hasNonEmptySelection()) return;
@@ -406,7 +411,7 @@ function detectLanguages(text: string): [SourceLang, TargetLang] {
 
 function createTooltip(): HTMLDivElement {
   const element = document.createElement("div");
-  element.setAttribute("data-hover-translate-tooltip", "true");
+  element.setAttribute(TOOLTIP_ATTR, "true");
   Object.assign(element.style, {
     position: "fixed",
     zIndex: "2147483647",
@@ -426,14 +431,14 @@ function createTooltip(): HTMLDivElement {
   } satisfies Partial<CSSStyleDeclaration>);
 
   tooltipContent = document.createElement("div");
-  tooltipContent.setAttribute("data-hover-translate-tooltip", "true");
+  tooltipContent.setAttribute(TOOLTIP_ATTR, "true");
   Object.assign(tooltipContent.style, {
     paddingRight: "24px",
   } satisfies Partial<CSSStyleDeclaration>);
 
   copyButton = document.createElement("button");
   copyButton.type = "button";
-  copyButton.setAttribute("data-hover-translate-tooltip", "true");
+  copyButton.setAttribute(TOOLTIP_ATTR, "true");
   copyButton.setAttribute("aria-label", "Copy translation");
   copyButton.title = "Copy";
   copyButton.innerHTML = COPY_ICON_SVG;
@@ -486,7 +491,7 @@ function createTooltip(): HTMLDivElement {
 
 async function copyTooltipText(): Promise<void> {
   const text = tooltipContent.textContent ?? "";
-  if (!text.trim() || text === "…") {
+  if (!text.trim() || text === LOADING_INDICATOR) {
     return;
   }
 
@@ -501,7 +506,7 @@ async function copyTooltipText(): Promise<void> {
     }
   }
 
-  showCopiedState();
+  setCopyButtonState("copied");
 }
 
 function copyTextWithExecCommand(text: string): boolean {
@@ -522,28 +527,34 @@ function copyTextWithExecCommand(text: string): boolean {
   return copied;
 }
 
-function showCopiedState(): void {
-  clearCopiedStateTimeout();
-
-  copyButton.innerHTML = CHECK_ICON_SVG;
-  copyButton.title = "Copied";
-  copiedStateTimeout = window.setTimeout(() => {
-    copyButton.innerHTML = COPY_ICON_SVG;
-    copyButton.title = "Copy";
-    copiedStateTimeout = null;
-  }, 1200);
-}
-
-function resetCopyButtonState(): void {
-  clearCopiedStateTimeout();
-  copyButton.innerHTML = COPY_ICON_SVG;
-  copyButton.title = "Copy";
-}
-
-function clearCopiedStateTimeout(): void {
+function setCopyButtonState(next: CopyButtonState): void {
   if (copiedStateTimeout !== null) {
     window.clearTimeout(copiedStateTimeout);
     copiedStateTimeout = null;
+  }
+
+  if (copyButtonState === next) {
+    return;
+  }
+
+  copyButtonState = next;
+
+  if (next === "hidden") {
+    copyButton.style.display = "none";
+    return;
+  }
+
+  copyButton.style.display = "flex";
+  if (next === "copied") {
+    copyButton.innerHTML = CHECK_ICON_SVG;
+    copyButton.title = "Copied";
+    copiedStateTimeout = window.setTimeout(() => {
+      copiedStateTimeout = null;
+      setCopyButtonState("idle");
+    }, COPIED_STATE_DURATION_MS);
+  } else {
+    copyButton.innerHTML = COPY_ICON_SVG;
+    copyButton.title = "Copy";
   }
 }
 
@@ -564,8 +575,8 @@ function showTooltipAtRect(
   tooltipContent.textContent = text;
   tooltip.dataset.state = options?.isError ? "error" : "ok";
   tooltip.style.borderLeft = options?.isError ? "4px solid #ef4444" : "4px solid transparent";
-  resetCopyButtonState();
-  copyButton.style.display = options?.isError || text === "…" ? "none" : "flex";
+  const showCopy = !options?.isError && text !== LOADING_INDICATOR;
+  setCopyButtonState(showCopy ? "idle" : "hidden");
   tooltip.style.display = "block";
 
   const margin = 12;
@@ -596,8 +607,7 @@ function hideTooltip(): void {
   tooltip.style.display = "none";
   delete tooltip.dataset.state;
   tooltip.style.borderLeft = "4px solid transparent";
-  resetCopyButtonState();
-  copyButton.style.display = "none";
+  setCopyButtonState("hidden");
 }
 
 function clearHoverTimer(): void {
