@@ -64,6 +64,7 @@ Translations appear in a floating tooltip positioned close to the source text.
 - In Hover mode the tooltip anchors to the hovered block, recomputing its position on each show so it stays aligned even if the page scrolls during the request.
 - In Selection mode the tooltip anchors to the bounding rectangle of the selection range.
 - The tooltip uses `position: fixed` and its placement flips vertically when near the edge of the viewport.
+- A copy button in the top-right corner copies the current translation to the clipboard; a checkmark confirms the action for about a second. The button is hidden while a translation is loading and on error states.
 - Error tooltips are visually separated with a red left border and show the mapped error message.
 
 ## LRU translation cache
