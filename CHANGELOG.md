@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0] - 2026-04-26
+
+### Added
+
+- Copy button in the top-right corner of the translation tooltip. Click to copy the translated text to the clipboard; a checkmark confirms the action for about a second. The button is hidden during loading and on error states.
+
+### Fixed
+
+- Hovering the tooltip itself no longer triggers a self-translation of its own text.
+- The clipboard fallback path (used when the async Clipboard API is unavailable) now preserves the user's text selection and focus instead of clobbering them.
+- The copy button's `aria-label` now updates to "Copied" during the confirmation window so assistive tech reflects the visible state.
+
 ## [1.1.0] - 2026-04-18
 
 ### Added
