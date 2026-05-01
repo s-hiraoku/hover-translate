@@ -12,23 +12,25 @@ import { fetchUsage, translate } from "./translator";
 
 chrome.runtime.onInstalled.addListener(() => {
   void (async () => {
-    const syncArea = chrome.storage.sync ?? chrome.storage.local;
-    const [syncResult, localResult] = await Promise.all([
-      syncArea.get(STORAGE_KEY),
+    const [localResult, syncResult] = await Promise.all([
       chrome.storage.local.get(STORAGE_KEY),
+      chrome.storage.sync.get(STORAGE_KEY),
     ]);
 
-    if (syncResult[STORAGE_KEY]) {
-      return;
-    }
-
     if (localResult[STORAGE_KEY]) {
-      await syncArea.set({ [STORAGE_KEY]: localResult[STORAGE_KEY] });
-      await chrome.storage.local.remove(STORAGE_KEY);
+      if (syncResult[STORAGE_KEY]) {
+        await chrome.storage.sync.remove(STORAGE_KEY);
+      }
       return;
     }
 
-    await syncArea.set({ [STORAGE_KEY]: defaultState });
+    if (syncResult[STORAGE_KEY]) {
+      await chrome.storage.local.set({ [STORAGE_KEY]: syncResult[STORAGE_KEY] });
+      await chrome.storage.sync.remove(STORAGE_KEY);
+      return;
+    }
+
+    await chrome.storage.local.set({ [STORAGE_KEY]: defaultState });
   })();
 });
 

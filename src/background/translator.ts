@@ -7,9 +7,13 @@ const CACHE_MAX = 100;
 // MV3 service workers can terminate at any time, so this cache is best-effort only.
 const cache = new Map<string, string>();
 
-
-function cacheKey(source: TranslateRequest["source"], target: TranslateRequest["target"], text: string): string {
-  return `${source}:${target}:${text}`;
+function cacheKey(args: {
+  sourceLang: "EN" | "JA";
+  targetLang: "EN-US" | "EN-GB" | "JA";
+  text: string;
+  context?: string;
+}): string {
+  return JSON.stringify([args.sourceLang, args.targetLang, args.text, args.context ?? ""]);
 }
 
 function cacheGet(key: string): string | undefined {
@@ -41,14 +45,19 @@ export async function translate(req: TranslateRequest): Promise<string> {
     throw new DeepLError("TEXT_TOO_LONG", `text too long: ${req.text.length}`);
   }
 
-  const key = cacheKey(req.source, req.target, req.text);
+  const sourceLang = req.source === "ja" ? "JA" : "EN";
+  const targetLang = req.target === "ja" ? "JA" : state.targetEnglish;
+  const key = cacheKey({
+    sourceLang,
+    targetLang,
+    text: req.text,
+    context: req.context,
+  });
   const cached = cacheGet(key);
   if (cached !== undefined) {
     return cached;
   }
 
-  const sourceLang = req.source === "ja" ? "JA" : "EN";
-  const targetLang = req.target === "ja" ? "JA" : state.targetEnglish;
   const translated = await translateText({
     key: state.deeplApiKey,
     text: req.text,

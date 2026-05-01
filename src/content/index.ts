@@ -53,6 +53,7 @@ let hoverTimer: number | null = null;
 let selectionTimer: number | null = null;
 let activeElement: HTMLElement | null = null;
 let currentGeneration = 0;
+let selectionGeneration = 0;
 const lastPointer = { x: 0, y: 0 };
 const COPY_ICON_SVG = `
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -94,7 +95,7 @@ function initialize(): void {
   );
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if ((areaName !== "sync" && areaName !== "local") || !(STORAGE_KEY in changes)) {
+    if (areaName !== "local" || !(STORAGE_KEY in changes)) {
       return;
     }
 
@@ -253,6 +254,8 @@ function handleSelectionChange(): void {
     return;
   }
 
+  selectionGeneration++;
+
   if (!hasNonEmptySelection()) {
     clearSelectionTimer();
     clearActiveState();
@@ -317,6 +320,7 @@ async function translateCurrentSelection(): Promise<void> {
 
   const rect = selection.getRangeAt(0).getBoundingClientRect();
   const generation = currentGeneration;
+  const selectionSnapshot = selectionGeneration;
 
   if (text.length > maxCharsLimit) {
     showTooltipAtRect(messageForCode("TEXT_TOO_LONG", maxCharsLimit), rect, { isError: true });
@@ -326,7 +330,13 @@ async function translateCurrentSelection(): Promise<void> {
   showTooltipAtRect(LOADING_INDICATOR, rect);
   const context = buildSelectionContext(selection);
   const result = await requestTranslation(text, context);
-  if (generation !== currentGeneration || !hasNonEmptySelection()) return;
+  if (
+    generation !== currentGeneration ||
+    selectionSnapshot !== selectionGeneration ||
+    getNormalizedSelectionText() !== text
+  ) {
+    return;
+  }
 
   if (result.kind === "error") {
     showTooltipAtRect(result.message, rect, { isError: true });
@@ -653,8 +663,13 @@ function clearSelectionTimer(): void {
 }
 
 function hasNonEmptySelection(): boolean {
+  return Boolean(getNormalizedSelectionText());
+}
+
+function getNormalizedSelectionText(): string {
   const selection = window.getSelection();
-  return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
+  if (!selection || selection.isCollapsed) return "";
+  return selection.toString().replace(/\s+/g, " ").trim();
 }
 
 function clearActiveState(): void {
