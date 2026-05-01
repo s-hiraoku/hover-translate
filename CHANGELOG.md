@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.1] - 2026-05-01
+
+### Fixed
+
+- Store the DeepL API key and extension settings in `chrome.storage.local` only, and migrate any previously synced state back to local storage.
+- Ignore stale selection translation responses when the selected text changes while a request is in flight.
+- Include DeepL target language and context in the translation cache key so context-aware results are not reused incorrectly.
+
+### Documentation
+
+- Add repository-level Codex agent instructions and update them for the current DeepL API implementation.
+
 ## [1.2.0] - 2026-04-26
 
 ### Added
