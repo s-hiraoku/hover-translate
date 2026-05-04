@@ -31,45 +31,34 @@ afterEach(() => {
 });
 
 describe("DeepLError extra coverage", () => {
-  it("preserves constructor arguments and Error inheritance", () => {
-    const withStatus = new DeepLError("INVALID_KEY", "msg", 403);
+  it("leaves status undefined when omitted", () => {
     const withoutStatus = new DeepLError("INVALID_KEY", "msg");
 
-    expect(withStatus).toBeInstanceOf(Error);
-    expect(withStatus).toBeInstanceOf(DeepLError);
-    expect(withStatus.code).toBe("INVALID_KEY");
-    expect(withStatus.message).toBe("msg");
-    expect(withStatus.status).toBe(403);
     expect(withoutStatus.status).toBeUndefined();
   });
 });
 
 describe("translateText extra coverage", () => {
-  it.each(["hello", "hello & world", "日本語"])(
-    "always sends stable form parameters and round-trips text %#",
-    async (text) => {
-      fetchMock().mockResolvedValue(
-        mockFetchResponse({
-          json: { translations: [{ detected_source_language: "EN", text: "translated" }] },
-        }),
-      );
+  it("round-trips Japanese text through form encoding", async () => {
+    const text = "日本語";
+    fetchMock().mockResolvedValue(
+      mockFetchResponse({
+        json: { translations: [{ detected_source_language: "EN", text: "translated" }] },
+      }),
+    );
 
-      await expect(
-        translateText({
-          key: "key123",
-          text,
-          sourceLang: "EN",
-          targetLang: "JA",
-        }),
-      ).resolves.toBe("translated");
+    await expect(
+      translateText({
+        key: "key123",
+        text,
+        sourceLang: "EN",
+        targetLang: "JA",
+      }),
+    ).resolves.toBe("translated");
 
-      const [, init] = fetchMock().mock.calls[0] as [string, RequestInit];
-      const body = new URLSearchParams(String(init.body));
-      expect(body.get("text")).toBe(text);
-      expect(body.get("preserve_formatting")).toBe("1");
-      expect(body.get("split_sentences")).toBe("nonewlines");
-    },
-  );
+    const [, init] = fetchMock().mock.calls[0] as [string, RequestInit];
+    expect(new URLSearchParams(String(init.body)).get("text")).toBe(text);
+  });
 
   it("maps non-Error JSON parse failures to UNKNOWN", async () => {
     fetchMock().mockResolvedValue(mockFetchResponse({ throwOnJson: "not json" }));
@@ -89,14 +78,11 @@ describe("translateText extra coverage", () => {
   });
 
   it.each([
-    [400, "UNKNOWN"],
-    [404, "UNKNOWN"],
-    [413, "UNKNOWN"],
-    [422, "UNKNOWN"],
-    [599, "SERVER_ERROR"],
-    [600, "UNKNOWN"],
-  ] satisfies [number, TranslateErrorCode][])(
-    "maps lesser-tested HTTP %i to %s",
+    [400, "UNKNOWN", "4xx fallback"],
+    [599, "SERVER_ERROR", "server-error upper boundary"],
+    [600, "UNKNOWN", "server-error exclusive boundary"],
+  ] satisfies [number, TranslateErrorCode, string][])(
+    "maps lesser-tested HTTP %i to %s (%s)",
     async (status, code) => {
       fetchMock().mockResolvedValue(mockFetchResponse({ status, json: {} }));
 

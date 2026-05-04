@@ -1,49 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { installChromeMock } from "../test/chrome-mock";
+import type { ChromeMock } from "../test/chrome-mock";
 import type {
   StorageState,
   TestKeyRequest,
   TranslateRequest,
 } from "../shared/messages";
 import { STORAGE_KEY, defaultState } from "../shared/messages";
-
-interface MockStorageArea {
-  data: Record<string, unknown>;
-  get: ReturnType<typeof vi.fn>;
-  set: ReturnType<typeof vi.fn>;
-  remove: ReturnType<typeof vi.fn>;
-}
-
-interface MockEvent<Listener extends (...args: never[]) => unknown> {
-  addListener: ReturnType<typeof vi.fn>;
-  _emit: (...args: Parameters<Listener>) => Promise<unknown[]>;
-  _listeners: Listener[];
-}
-
-interface MockChrome {
-  runtime: {
-    onInstalled: MockEvent<() => void>;
-    onMessage: MockEvent<
-      (
-        message: unknown,
-        sender: chrome.runtime.MessageSender,
-        sendResponse: (response: unknown) => void,
-      ) => boolean | undefined
-    >;
-    sendMessage: ReturnType<typeof vi.fn>;
-  };
-  commands: {
-    onCommand: MockEvent<(command: string) => void>;
-  };
-  storage: {
-    local: MockStorageArea;
-    sync: MockStorageArea;
-  };
-  tabs: {
-    query: ReturnType<typeof vi.fn>;
-    sendMessage: ReturnType<typeof vi.fn>;
-    sentMessages: { tabId: number; message: unknown }[];
-  };
-}
 
 const { fetchUsage, translate } = vi.hoisted(() => ({
   fetchUsage: vi.fn<typeof import("./translator").fetchUsage>(),
@@ -55,83 +18,7 @@ vi.mock("./translator", () => ({
   fetchUsage,
 }));
 
-function createEvent<Listener extends (...args: never[]) => unknown>(): MockEvent<Listener> {
-  const listeners: Listener[] = [];
-  return {
-    _listeners: listeners,
-    addListener: vi.fn((listener: Listener) => {
-      listeners.push(listener);
-    }),
-    _emit: async (...args: Parameters<Listener>) =>
-      Promise.all(listeners.map(async (listener) => listener(...args))),
-  };
-}
-
-function createStorageArea(): MockStorageArea {
-  const area: MockStorageArea = {
-    data: {},
-    get: vi.fn(async (key?: string) => {
-      if (typeof key === "string") {
-        return Object.prototype.hasOwnProperty.call(area.data, key)
-          ? { [key]: area.data[key] }
-          : {};
-      }
-      return { ...area.data };
-    }),
-    set: vi.fn(async (items: Record<string, unknown>) => {
-      Object.assign(area.data, items);
-    }),
-    remove: vi.fn(async (key: string) => {
-      delete area.data[key];
-    }),
-  };
-  return area;
-}
-
-function installChromeMock(): MockChrome {
-  const chromeMock: MockChrome = {
-    runtime: {
-      onInstalled: createEvent<() => void>(),
-      onMessage:
-        createEvent<
-          (
-            message: unknown,
-            sender: chrome.runtime.MessageSender,
-            sendResponse: (response: unknown) => void,
-          ) => boolean | undefined
-        >(),
-      sendMessage: vi.fn(async (message: unknown) => {
-        for (const listener of chromeMock.runtime.onMessage._listeners) {
-          const response = await new Promise<unknown>((resolve) => {
-            const handled = listener(message, {}, resolve);
-            if (!handled) resolve(undefined);
-          });
-          if (response !== undefined) return response;
-        }
-        return undefined;
-      }),
-    },
-    commands: {
-      onCommand: createEvent<(command: string) => void>(),
-    },
-    storage: {
-      local: createStorageArea(),
-      sync: createStorageArea(),
-    },
-    tabs: {
-      query: vi.fn(async () => []),
-      sendMessage: vi.fn(async (tabId: number, message: unknown) => {
-        chromeMock.tabs.sentMessages.push({ tabId, message });
-      }),
-      sentMessages: [],
-    },
-  };
-
-  (globalThis as { chrome: typeof chrome }).chrome = chromeMock as unknown as typeof chrome;
-  return chromeMock;
-}
-
-async function importServiceWorker(args: { flush?: boolean } = {}): Promise<MockChrome> {
+async function importServiceWorker(args: { flush?: boolean } = {}): Promise<ChromeMock> {
   vi.resetModules();
   const chromeMock = installChromeMock();
   translate.mockReset();
@@ -156,8 +43,8 @@ async function readLocalState(): Promise<StorageState | undefined> {
   return result[STORAGE_KEY] as StorageState | undefined;
 }
 
-function seed(area: MockStorageArea, state: Partial<StorageState>): void {
-  area.data[STORAGE_KEY] = { ...defaultState, ...state };
+function seed(area: ChromeMock["storage"]["local"], state: Partial<StorageState>): void {
+  void area.set({ [STORAGE_KEY]: { ...defaultState, ...state } });
 }
 
 beforeEach(() => {
@@ -167,6 +54,8 @@ beforeEach(() => {
 describe("commands.onCommand extra coverage", () => {
   it.each(["foo", ""])("ignores unknown command name %# without querying tabs", async (command) => {
     const chromeMock = await importServiceWorker();
+    const querySpy = vi.spyOn(chromeMock.tabs, "query");
+    const sendMessageSpy = vi.spyOn(chromeMock.tabs, "sendMessage");
     seed(chromeMock.storage.local, {
       enabled: true,
       mode: "selection",
@@ -176,67 +65,46 @@ describe("commands.onCommand extra coverage", () => {
     await chromeMock.commands.onCommand._emit(command);
     await flushAsyncWork();
 
-    expect(chromeMock.tabs.query).not.toHaveBeenCalled();
-    expect(chromeMock.tabs.sendMessage).not.toHaveBeenCalled();
+    expect(querySpy).not.toHaveBeenCalled();
+    expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
   it("does not send when translate-selection has no active tab", async () => {
     const chromeMock = await importServiceWorker();
+    const sendMessageSpy = vi.spyOn(chromeMock.tabs, "sendMessage");
     seed(chromeMock.storage.local, {
       enabled: true,
       mode: "selection",
       selectionTrigger: "shortcut",
     });
-    chromeMock.tabs.query.mockResolvedValue([]);
 
-    await expect(chromeMock.commands.onCommand._emit("translate-selection")).resolves.toEqual([
-      undefined,
-    ]);
+    chromeMock.commands.onCommand._emit("translate-selection");
     await flushAsyncWork();
 
-    expect(chromeMock.tabs.sendMessage).not.toHaveBeenCalled();
+    expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
   it("does not send when the active tab id is undefined", async () => {
     const chromeMock = await importServiceWorker();
+    const sendMessageSpy = vi.spyOn(chromeMock.tabs, "sendMessage");
     seed(chromeMock.storage.local, {
       enabled: true,
       mode: "selection",
       selectionTrigger: "shortcut",
     });
-    chromeMock.tabs.query.mockResolvedValue([{ id: undefined }]);
+    chromeMock.tabs._setActive([{ id: undefined } as chrome.tabs.Tab]);
 
     await chromeMock.commands.onCommand._emit("translate-selection");
     await flushAsyncWork();
 
-    expect(chromeMock.tabs.sendMessage).not.toHaveBeenCalled();
+    expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
-  it("does not send keyboard command when selectionTrigger is auto", async () => {
-    const chromeMock = await importServiceWorker();
-    seed(chromeMock.storage.local, {
-      enabled: true,
-      mode: "selection",
-      selectionTrigger: "auto",
-    });
-    chromeMock.tabs.query.mockResolvedValue([{ id: 42 }]);
-
-    await chromeMock.commands.onCommand._emit("translate-selection");
-    await flushAsyncWork();
-
-    expect(chromeMock.tabs.sendMessage).not.toHaveBeenCalled();
-  });
+  // Auto-trigger no-send is covered by the settings table in service-worker.test.ts.
 });
 
 describe("runtime messages extra coverage", () => {
-  it("returns false explicitly for unknown message types", async () => {
-    const chromeMock = await importServiceWorker();
-    const listener = chromeMock.runtime.onMessage._listeners[0];
-
-    const result = listener?.({ type: "UNKNOWN" }, {}, vi.fn());
-
-    expect(result).toBe(false);
-  });
+  // Unknown message routing is covered in service-worker.test.ts.
 
   it("maps non-DeepLError TRANSLATE rejection to UNKNOWN with the original message", async () => {
     const chromeMock = await importServiceWorker();
@@ -273,15 +141,20 @@ describe("runtime messages extra coverage", () => {
 
 describe("storage initialization extra coverage", () => {
   it("does not corrupt local storage when cold start and onInstalled initialization overlap", async () => {
-    const chromeMock = await importServiceWorker({ flush: false });
+    const chromeMock = await importServiceWorker();
     seed(chromeMock.storage.sync, { enabled: true, deeplApiKey: "sync-key" });
+    // The shared chrome mock's `set` is a plain function, not a vi.fn();
+    // wrap it now so we can count calls during the onInstalled re-entry.
+    const setSpy = vi.spyOn(chromeMock.storage.local, "set");
 
     await chromeMock.runtime.onInstalled._emit();
     await flushAsyncWork();
 
     const state = await readLocalState();
-    expect([defaultState, { ...defaultState, enabled: true, deeplApiKey: "sync-key" }]).toContainEqual(
-      state,
-    );
+    expect(state).toEqual(defaultState);
+    expect(chromeMock.storage.sync._dump()[STORAGE_KEY]).toBeUndefined();
+    // Cold-start already wrote defaultState before this spy attached.
+    // onInstalled sees existing local state and must not write again.
+    expect(setSpy).toHaveBeenCalledTimes(0);
   });
 });

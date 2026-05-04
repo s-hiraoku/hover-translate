@@ -1,75 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { installChromeMock } from "../test/chrome-mock";
+import {
+  TOOLTIP_SELECTOR,
+  bootContentScript,
+  finishDebouncedWork,
+  flushMicrotasks,
+  mouseover,
+  tooltip,
+} from "../test/boot-content-script";
 import {
   STORAGE_KEY,
   defaultState,
   messageForCode,
 } from "../shared/messages";
-import type { StorageState, TranslateResponse } from "../shared/messages";
-
-const HOVER_DELAY_MS = 300;
-const TOOLTIP_SELECTOR = '[data-hover-translate-tooltip="true"]';
-
-const enabledHoverState: StorageState = {
-  ...defaultState,
-  enabled: true,
-  mode: "hover",
-  selectionTrigger: "shortcut",
-  deeplApiKey: "k",
-};
-
-function flushMicrotasks(): Promise<void> {
-  return Promise.resolve().then(() => undefined);
-}
-
-function tooltip(): HTMLDivElement {
-  const element = document.querySelector<HTMLDivElement>(TOOLTIP_SELECTOR);
-  expect(element).not.toBeNull();
-  return element as HTMLDivElement;
-}
-
-function mouseover(target: Element): void {
-  target.dispatchEvent(
-    new MouseEvent("mouseover", {
-      bubbles: true,
-      clientX: 24,
-      clientY: 32,
-    }),
-  );
-}
-
-async function finishDebouncedWork(): Promise<void> {
-  vi.advanceTimersByTime(HOVER_DELAY_MS);
-  await flushMicrotasks();
-  await flushMicrotasks();
-}
-
-function stubSendMessage(response: TranslateResponse | Promise<TranslateResponse>) {
-  const sendMessage = vi.fn(async () => response);
-  (chrome.runtime as unknown as { sendMessage: typeof sendMessage }).sendMessage =
-    sendMessage;
-  return sendMessage;
-}
-
-async function bootContentScript(
-  state: Partial<StorageState> = {},
-  response: TranslateResponse = { ok: true, translated: "translated" },
-) {
-  installChromeMock();
-  const fullState: StorageState = {
-    ...enabledHoverState,
-    ...state,
-  };
-  await chrome.storage.local.set({ [STORAGE_KEY]: fullState });
-  const sendMessage = stubSendMessage(response);
-
-  vi.resetModules();
-  await import("./index");
-  await flushMicrotasks();
-  await flushMicrotasks();
-
-  return { sendMessage, state: fullState };
-}
 
 function appendParagraph(text: string): HTMLParagraphElement {
   const paragraph = document.createElement("p");

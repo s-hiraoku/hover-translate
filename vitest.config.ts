@@ -14,9 +14,16 @@ export default defineConfig({
         "src/**/*.{test,spec}.{ts,tsx}",
         "src/test/**",
         "src/main.tsx",
+        "src/popup/main.tsx",
         "src/manifest.ts",
         "src/popup/index.html",
       ],
+      thresholds: {
+        statements: 88,
+        branches: 80,
+        functions: 85,
+        lines: 88,
+      },
     },
   },
 });

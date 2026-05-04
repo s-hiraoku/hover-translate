@@ -12,6 +12,7 @@ type RuntimeMessageListener = (
 ) => boolean | void | Promise<unknown> | unknown;
 type RuntimeInstalledListener = () => void | Promise<void>;
 type CommandListener = (command: string) => void;
+type Command = chrome.commands.Command;
 type TabMessage = {
   tabId: number;
   message: unknown;
@@ -42,19 +43,31 @@ export interface ChromeMock {
     sendMessage: (message: unknown) => Promise<unknown>;
     onMessage: MockEvent<RuntimeMessageListener> & {
       _emit: (message: unknown, sender?: chrome.runtime.MessageSender) => Promise<unknown>;
+      /**
+       * Sends a message through registered listeners and awaits async sendResponse paths.
+       */
+      _sendAndAwait: (message: unknown, sender?: chrome.runtime.MessageSender) => Promise<unknown>;
     };
     onInstalled: MockEvent<RuntimeInstalledListener> & {
       _emit: () => Promise<void>;
     };
   };
-  commands?: {
+  commands: {
+    getAll: () => Promise<Command[]>;
+    _setAll: (commands: Command[]) => void;
     onCommand: MockEvent<CommandListener> & {
       _emit: (command: string) => void;
     };
   };
-  tabs?: {
+  tabs: {
+    created: Pick<chrome.tabs.CreateProperties, "url">[];
     sentMessages: TabMessage[];
+    query: (info: chrome.tabs.QueryInfo) => Promise<chrome.tabs.Tab[]>;
+    create: (
+      createProperties: chrome.tabs.CreateProperties,
+    ) => Promise<chrome.tabs.Tab>;
     sendMessage: (tabId: number, message: unknown) => Promise<unknown>;
+    _setActive: (tabs: chrome.tabs.Tab[]) => void;
   };
 }
 
@@ -202,6 +215,9 @@ export function createChromeMock(): ChromeMock {
   };
 
   const sentMessages: TabMessage[] = [];
+  const createdTabs: Pick<chrome.tabs.CreateProperties, "url">[] = [];
+  let commands: Command[] = [];
+  let activeTabs: chrome.tabs.Tab[] = [];
 
   return {
     storage: {
@@ -219,6 +235,7 @@ export function createChromeMock(): ChromeMock {
         addListener: messageEvent.addListener,
         removeListener: messageEvent.removeListener,
         _emit: runtime.emitMessage,
+        _sendAndAwait: runtime.emitMessage,
       },
       onInstalled: {
         addListener: installedEvent.addListener,
@@ -229,6 +246,12 @@ export function createChromeMock(): ChromeMock {
       },
     },
     commands: {
+      async getAll() {
+        return cloneValue(commands);
+      },
+      _setAll(nextCommands: Command[]) {
+        commands = cloneValue(nextCommands);
+      },
       onCommand: {
         addListener: commandEvent.addListener,
         removeListener: commandEvent.removeListener,
@@ -240,10 +263,24 @@ export function createChromeMock(): ChromeMock {
       },
     },
     tabs: {
+      created: createdTabs,
       sentMessages,
+      async query() {
+        return cloneValue(activeTabs);
+      },
+      async create(createProperties: chrome.tabs.CreateProperties) {
+        createdTabs.push({ url: createProperties.url });
+        return {
+          id: createdTabs.length,
+          url: createProperties.url,
+        } as chrome.tabs.Tab;
+      },
       async sendMessage(tabId: number, message: unknown) {
         sentMessages.push({ tabId, message });
         return runtime.emitMessage(message, { tab: { id: tabId } as chrome.tabs.Tab });
+      },
+      _setActive(tabs: chrome.tabs.Tab[]) {
+        activeTabs = cloneValue(tabs);
       },
     },
   };

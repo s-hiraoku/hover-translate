@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installChromeMock } from "../test/chrome-mock";
 import type { StorageState, TranslateRequest } from "../shared/messages";
 import { STORAGE_KEY, defaultState } from "../shared/messages";
 import { DeepLError } from "./deepl-client";
@@ -17,45 +18,8 @@ vi.mock("./deepl-client", async (importOriginal) => {
   };
 });
 
-interface MockChromeStorageArea {
-  get: ReturnType<typeof vi.fn>;
-  set: ReturnType<typeof vi.fn>;
-  remove: ReturnType<typeof vi.fn>;
-  data: Record<string, unknown>;
-}
-
-function createStorageArea(): MockChromeStorageArea {
-  const area: MockChromeStorageArea = {
-    data: {},
-    get: vi.fn(async (key?: string) => {
-      if (typeof key === "string") {
-        return { [key]: area.data[key] };
-      }
-      return { ...area.data };
-    }),
-    set: vi.fn(async (items: Record<string, unknown>) => {
-      Object.assign(area.data, items);
-    }),
-    remove: vi.fn(async (key: string) => {
-      delete area.data[key];
-    }),
-  };
-  return area;
-}
-
-function installChromeMock(): MockChromeStorageArea {
-  const local = createStorageArea();
-  (globalThis as { chrome: typeof chrome }).chrome = {
-    storage: {
-      local: local as unknown as chrome.storage.StorageArea,
-    },
-  } as typeof chrome;
-  return local;
-}
-
 function seedStorage(state: Partial<StorageState>): void {
-  const area = chrome.storage.local as unknown as MockChromeStorageArea;
-  area.data[STORAGE_KEY] = { ...defaultState, ...state };
+  void chrome.storage.local.set({ [STORAGE_KEY]: { ...defaultState, ...state } });
 }
 
 async function importTranslator(): Promise<typeof import("./translator")> {
@@ -227,12 +191,12 @@ describe("fetchUsage", () => {
   });
 
   it.each(["", "   "])("rejects blank override without reading storage %#", async (key) => {
-    const area = chrome.storage.local as unknown as MockChromeStorageArea;
+    const getSpy = vi.spyOn(chrome.storage.local, "get");
     const { fetchUsage } = await importTranslator();
 
     await expect(fetchUsage({ key })).rejects.toMatchObject({ code: "MISSING_KEY" });
 
-    expect(area.get).not.toHaveBeenCalled();
+    expect(getSpy).not.toHaveBeenCalled();
     expect(getUsage).not.toHaveBeenCalled();
   });
 

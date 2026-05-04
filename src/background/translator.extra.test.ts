@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installChromeMock } from "../test/chrome-mock";
 import type { StorageState, TranslateRequest } from "../shared/messages";
 import { STORAGE_KEY, defaultState } from "../shared/messages";
 import { DeepLError } from "./deepl-client";
@@ -17,47 +18,8 @@ vi.mock("./deepl-client", async (importOriginal) => {
   };
 });
 
-interface MockChromeStorageArea {
-  get: ReturnType<typeof vi.fn>;
-  set: ReturnType<typeof vi.fn>;
-  remove: ReturnType<typeof vi.fn>;
-  data: Record<string, unknown>;
-}
-
-function createStorageArea(): MockChromeStorageArea {
-  const area: MockChromeStorageArea = {
-    data: {},
-    get: vi.fn(async (key?: string) => {
-      if (typeof key === "string") {
-        return Object.prototype.hasOwnProperty.call(area.data, key)
-          ? { [key]: area.data[key] }
-          : {};
-      }
-      return { ...area.data };
-    }),
-    set: vi.fn(async (items: Record<string, unknown>) => {
-      Object.assign(area.data, items);
-    }),
-    remove: vi.fn(async (key: string) => {
-      delete area.data[key];
-    }),
-  };
-  return area;
-}
-
-function installChromeMock(): MockChromeStorageArea {
-  const local = createStorageArea();
-  (globalThis as { chrome: typeof chrome }).chrome = {
-    storage: {
-      local: local as unknown as chrome.storage.StorageArea,
-    },
-  } as typeof chrome;
-  return local;
-}
-
 function seedStorage(state: Partial<StorageState>): void {
-  const area = chrome.storage.local as unknown as MockChromeStorageArea;
-  area.data[STORAGE_KEY] = { ...defaultState, ...state };
+  void chrome.storage.local.set({ [STORAGE_KEY]: { ...defaultState, ...state } });
 }
 
 async function importTranslator(): Promise<typeof import("./translator")> {
@@ -88,42 +50,48 @@ afterEach(() => {
 });
 
 describe("translate cache extra coverage", () => {
-  it("keeps same text/source/target with different context in separate cache entries", async () => {
-    seedStorage({ deeplApiKey: "key123" });
-    const { translate } = await importTranslator();
+  it.each([
+    {
+      name: "different context",
+      firstState: {},
+      secondState: {},
+      firstRequest: { text: "same", source: "en", target: "ja", context: "formal" },
+      secondRequest: { text: "same", source: "en", target: "ja", context: "casual" },
+      firstCall: { context: "formal" },
+      secondCall: { context: "casual" },
+    },
+    {
+      name: "EN-US vs EN-GB targetEnglish",
+      firstState: { targetEnglish: "EN-US" },
+      secondState: { targetEnglish: "EN-GB" },
+      firstRequest: { text: "same", source: "ja", target: "en" },
+      secondRequest: { text: "same", source: "ja", target: "en" },
+      firstCall: { targetLang: "EN-US" },
+      secondCall: { targetLang: "EN-GB" },
+    },
+  ] satisfies {
+    name: string;
+    firstState: Partial<StorageState>;
+    secondState: Partial<StorageState>;
+    firstRequest: Partial<TranslateRequest>;
+    secondRequest: Partial<TranslateRequest>;
+    firstCall: Record<string, unknown>;
+    secondCall: Record<string, unknown>;
+  }[])(
+    "keeps same text cache entries separate for $name",
+    async ({ firstState, secondState, firstRequest, secondRequest, firstCall, secondCall }) => {
+      seedStorage({ deeplApiKey: "key123", ...firstState });
+      const { translate } = await importTranslator();
 
-    await translate(request({ text: "same", source: "en", target: "ja", context: "formal" }));
-    await translate(request({ text: "same", source: "en", target: "ja", context: "casual" }));
+      await translate(request(firstRequest));
+      seedStorage({ deeplApiKey: "key123", ...secondState });
+      await translate(request(secondRequest));
 
-    expect(translateText).toHaveBeenCalledTimes(2);
-    expect(translateText).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ context: "formal" }),
-    );
-    expect(translateText).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ context: "casual" }),
-    );
-  });
-
-  it("keeps EN-US and EN-GB targetEnglish results in separate cache entries", async () => {
-    seedStorage({ deeplApiKey: "key123", targetEnglish: "EN-US" });
-    const { translate } = await importTranslator();
-
-    await translate(request({ text: "same", source: "ja", target: "en" }));
-    seedStorage({ deeplApiKey: "key123", targetEnglish: "EN-GB" });
-    await translate(request({ text: "same", source: "ja", target: "en" }));
-
-    expect(translateText).toHaveBeenCalledTimes(2);
-    expect(translateText).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ targetLang: "EN-US" }),
-    );
-    expect(translateText).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ targetLang: "EN-GB" }),
-    );
-  });
+      expect(translateText).toHaveBeenCalledTimes(2);
+      expect(translateText).toHaveBeenNthCalledWith(1, expect.objectContaining(firstCall));
+      expect(translateText).toHaveBeenNthCalledWith(2, expect.objectContaining(secondCall));
+    },
+  );
 
   it("propagates DeepLError instances from translateText unchanged", async () => {
     seedStorage({ deeplApiKey: "key123" });
@@ -146,8 +114,8 @@ describe("fetchUsage extra coverage", () => {
   });
 
   it("uses an override key without reading storage", async () => {
-    const area = chrome.storage.local as unknown as MockChromeStorageArea;
     seedStorage({ deeplApiKey: "saved-key" });
+    const getSpy = vi.spyOn(chrome.storage.local, "get");
     const { fetchUsage } = await importTranslator();
 
     await expect(fetchUsage({ key: " override-key " })).resolves.toEqual({
@@ -155,7 +123,7 @@ describe("fetchUsage extra coverage", () => {
       character_limit: 500000,
     });
 
-    expect(area.get).not.toHaveBeenCalled();
+    expect(getSpy).not.toHaveBeenCalled();
     expect(getUsage).toHaveBeenCalledWith("override-key");
   });
 

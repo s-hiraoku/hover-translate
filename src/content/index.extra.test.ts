@@ -1,41 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { installChromeMock } from "../test/chrome-mock";
+import {
+  TOOLTIP_SELECTOR,
+  bootContentScript,
+  finishDebouncedWork,
+  flushAsyncWork,
+  mouseout,
+  mouseover,
+  tooltip,
+} from "../test/boot-content-script";
 import {
   STORAGE_KEY,
   defaultState,
   messageForCode,
 } from "../shared/messages";
-import type {
-  StorageState,
-  TranslateResponse,
-} from "../shared/messages";
+import type { TranslateResponse } from "../shared/messages";
 
-const HOVER_DELAY_MS = 300;
 const COPIED_STATE_DURATION_MS = 1200;
-const TOOLTIP_SELECTOR = '[data-hover-translate-tooltip="true"]';
-
-const enabledHoverState: StorageState = {
-  ...defaultState,
-  enabled: true,
-  mode: "hover",
-  selectionTrigger: "shortcut",
-  deeplApiKey: "k",
-};
-
-function flushMicrotasks(): Promise<void> {
-  return Promise.resolve().then(() => undefined);
-}
-
-async function flushAsyncWork(): Promise<void> {
-  await flushMicrotasks();
-  await flushMicrotasks();
-}
-
-function tooltip(): HTMLDivElement {
-  const element = document.querySelector<HTMLDivElement>(TOOLTIP_SELECTOR);
-  expect(element).not.toBeNull();
-  return element as HTMLDivElement;
-}
 
 function copyButton(): HTMLButtonElement {
   const button = document.querySelector<HTMLButtonElement>(
@@ -43,58 +23,6 @@ function copyButton(): HTMLButtonElement {
   );
   expect(button).not.toBeNull();
   return button as HTMLButtonElement;
-}
-
-function mouseover(target: Element, clientX = 24, clientY = 32): void {
-  target.dispatchEvent(
-    new MouseEvent("mouseover", {
-      bubbles: true,
-      clientX,
-      clientY,
-    }),
-  );
-}
-
-function mouseout(target: Element, relatedTarget: EventTarget | null): void {
-  target.dispatchEvent(
-    new MouseEvent("mouseout", {
-      bubbles: true,
-      relatedTarget,
-    }),
-  );
-}
-
-async function finishDebouncedWork(): Promise<void> {
-  vi.advanceTimersByTime(HOVER_DELAY_MS);
-  await flushAsyncWork();
-}
-
-function stubSendMessage(
-  response: TranslateResponse | Promise<TranslateResponse>,
-) {
-  const sendMessage = vi.fn(async () => response);
-  (chrome.runtime as unknown as { sendMessage: typeof sendMessage }).sendMessage =
-    sendMessage;
-  return sendMessage;
-}
-
-async function bootContentScript(
-  state: Partial<StorageState> = {},
-  response: TranslateResponse = { ok: true, translated: "translated" },
-) {
-  installChromeMock();
-  const fullState: StorageState = {
-    ...enabledHoverState,
-    ...state,
-  };
-  await chrome.storage.local.set({ [STORAGE_KEY]: fullState });
-  const sendMessage = stubSendMessage(response);
-
-  vi.resetModules();
-  await import("./index");
-  await flushAsyncWork();
-
-  return { sendMessage, state: fullState };
 }
 
 function appendTextBlock<K extends keyof HTMLElementTagNameMap>(
@@ -292,23 +220,7 @@ describe("extra content error rendering coverage", () => {
     expect(tooltip().dataset.state).toBe("error");
   });
 
-  it("renders the background-unavailable message when sendMessage rejects", async () => {
-    await bootContentScript();
-    const sendMessage = vi.fn(async () => {
-      throw new Error("background unavailable");
-    });
-    (chrome.runtime as unknown as { sendMessage: typeof sendMessage }).sendMessage =
-      sendMessage;
-    const paragraph = appendParagraph("Hello rejection path.");
-
-    mouseover(paragraph);
-    await finishDebouncedWork();
-
-    expect(tooltip().textContent).toContain(
-      "Extension background is unavailable. Reload the page.",
-    );
-    expect(tooltip().dataset.state).toBe("error");
-  });
+  // Background-unavailable rejection is covered in index.test.ts.
 });
 
 describe("extra content re-translation and stale response coverage", () => {
@@ -344,8 +256,6 @@ describe("extra content re-translation and stale response coverage", () => {
     expect(tooltip().textContent).toContain("second translation");
     expect(tooltip().textContent).not.toContain("stale first translation");
   });
-
-  it.skip("does not re-send after leaving and re-hovering the same block because WeakMap memoization is not implemented in src/content/index.ts");
 });
 
 describe("extra content shortcut selection coverage", () => {

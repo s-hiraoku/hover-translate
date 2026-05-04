@@ -1,5 +1,4 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_MAX_CHARS,
@@ -9,16 +8,8 @@ import {
   messageForCode,
 } from "../shared/messages";
 import { installChromeMock } from "../test/chrome-mock";
-import type {
-  GetUsageResponse,
-  StorageState,
-  TestKeyResponse,
-} from "../shared/messages";
-
-type RuntimeMessage =
-  | { type: "GET_USAGE" }
-  | { type: "TEST_KEY"; key: string }
-  | { type: string; key?: string };
+import { renderPopup, stubCommands, stubSendMessage } from "../test/render-popup";
+import type { StorageState } from "../shared/messages";
 
 const okUsage = {
   character_count: 250,
@@ -29,82 +20,6 @@ const requiredState: StorageState = {
   ...defaultState,
   deeplApiKey: "saved-key",
 };
-
-function stubCommands(shortcut?: string) {
-  (
-    globalThis.chrome as unknown as {
-      commands: { getAll: ReturnType<typeof vi.fn> };
-      tabs: { create: ReturnType<typeof vi.fn> };
-    }
-  ).commands = {
-    getAll: vi.fn().mockResolvedValue(
-      shortcut
-        ? [
-            { name: "other-command", shortcut: "Ctrl+X" },
-            { name: "translate-selection", shortcut },
-          ]
-        : [],
-    ),
-  };
-  (
-    globalThis.chrome as unknown as {
-      tabs: { create: ReturnType<typeof vi.fn> };
-    }
-  ).tabs.create = vi.fn();
-}
-
-function stubSendMessage(options: {
-  usageResponse?: GetUsageResponse;
-  testResponse?: TestKeyResponse;
-  throwOnTest?: Error;
-} = {}) {
-  const sendMessage = vi
-    .spyOn(chrome.runtime, "sendMessage")
-    .mockImplementation(async (message: unknown) => {
-      const typed = message as RuntimeMessage;
-      if (typed.type === "GET_USAGE") {
-        return options.usageResponse ?? { ok: false, errorCode: "MISSING_KEY" };
-      }
-      if (typed.type === "TEST_KEY") {
-        if (options.throwOnTest) throw options.throwOnTest;
-        return options.testResponse ?? { ok: false, errorCode: "MISSING_KEY" };
-      }
-      return undefined;
-    });
-  return sendMessage;
-}
-
-async function renderPopup(
-  initialState?: Partial<StorageState>,
-  options: {
-    usageResponse?: GetUsageResponse;
-    testResponse?: TestKeyResponse;
-    throwOnTest?: Error;
-    shortcut?: string;
-  } = {},
-) {
-  installChromeMock();
-  if (initialState) {
-    await chrome.storage.local.set({
-      [STORAGE_KEY]: { ...defaultState, ...initialState },
-    });
-  }
-  stubCommands(options.shortcut);
-  const sendMessage = stubSendMessage(options);
-
-  vi.resetModules();
-  const { Popup } = await import("./Popup");
-  const view = render(<Popup />);
-  await waitFor(() =>
-    expect(isDisabled(screen.getByRole("button", { name: "Save" }))).toBe(false),
-  );
-
-  return {
-    ...view,
-    sendMessage,
-    user: userEvent.setup(),
-  };
-}
 
 function apiKeyInput() {
   return screen.getByPlaceholderText("Paste your key here") as HTMLInputElement;
@@ -508,7 +423,12 @@ describe("Popup shortcut display", () => {
         mode: "selection",
         selectionTrigger: "shortcut",
       },
-      { shortcut: "Alt+Shift+T" },
+      {
+        commands: [
+          { name: "other-command", shortcut: "Ctrl+X" },
+          { name: "translate-selection", shortcut: "Alt+Shift+T" },
+        ],
+      },
     );
 
     const shortcutRow = document.querySelector(".shortcut");

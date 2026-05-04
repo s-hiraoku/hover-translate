@@ -179,20 +179,17 @@ describe("readStorageState and updateStorageState", () => {
 });
 
 describe("messageForCode, resolveErrorMessage, and buildErrorResponse", () => {
-  const errorCodes: TranslateErrorCode[] = [
-    "MISSING_KEY",
-    "INVALID_KEY",
-    "QUOTA_EXCEEDED",
-    "RATE_LIMITED",
-    "SERVER_ERROR",
-    "NETWORK_ERROR",
-    "TEXT_TOO_LONG",
-    "UNKNOWN",
-  ];
-
-  it.each(errorCodes)("returns a non-empty message for %s", (code) => {
-    expect(messageForCode(code)).toEqual(expect.any(String));
-    expect(messageForCode(code).length).toBeGreaterThan(0);
+  it.each([
+    ["MISSING_KEY", "Set your DeepL API key from the extension popup."],
+    ["INVALID_KEY", "Invalid DeepL API key. Check the key in the popup."],
+    ["QUOTA_EXCEEDED", "DeepL free quota exceeded this period."],
+    ["RATE_LIMITED", "DeepL rate limit hit. Slow down and try again."],
+    ["SERVER_ERROR", "DeepL is temporarily unavailable. Try again shortly."],
+    ["NETWORK_ERROR", "Network error reaching DeepL."],
+    ["TEXT_TOO_LONG", `Text too long (max ${DEFAULT_MAX_CHARS} chars).`],
+    ["UNKNOWN", "Translation failed."],
+  ] satisfies [TranslateErrorCode, string][])("returns the exact message for %s", (code, message) => {
+    expect(messageForCode(code)).toBe(message);
   });
 
   it("includes provided maxChars for TEXT_TOO_LONG", () => {
