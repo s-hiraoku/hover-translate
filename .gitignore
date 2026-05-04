@@ -1,5 +1,6 @@
 node_modules
 dist
+coverage/
 *.zip
 .DS_Store
 node_modules/.tmp
@@ -10,6 +11,7 @@ node_modules/.tmp
 .rig/
 tasks/
 result.md
+result-*.md
 result.review.md
 # docs
 docs/node_modules
