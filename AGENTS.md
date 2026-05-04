@@ -48,3 +48,12 @@ When a new feature is requested:
 4. Codex reports completion; Codex reviews the diff, runs `pnpm build`, and reports back to the user.
 
 Codex may write code directly only for: scaffolding, trivial fixes, configuration tweaks, or when Codex is unavailable/blocked. Anything non-trivial should be delegated.
+
+
+<!-- BEGIN RIG INSTRUCTIONS -->
+<!-- Suggested for AGENTS.md in Codex projects. -->
+
+## Rig
+
+See `.rig/instructions/rig.md` for Rig usage policy, artifact inspection rules, and patch-apply safety rules.
+<!-- END RIG INSTRUCTIONS -->
