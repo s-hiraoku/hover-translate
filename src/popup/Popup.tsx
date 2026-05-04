@@ -3,6 +3,7 @@ import {
   MAX_MAX_CHARS,
   MIN_MAX_CHARS,
   STORAGE_KEY,
+  clampMaxChars,
   defaultState,
   messageForCode,
   normalizeState,
@@ -12,17 +13,12 @@ import {
   type GetUsageResponse,
   type Mode,
   type SelectionTrigger,
-  type StorageState,
   type TestKeyResponse,
 } from "../shared/messages";
 
 let cachedUsage: DeepLUsage | undefined;
 let cachedUsageAt = 0;
 const USAGE_CACHE_TTL_MS = 30_000;
-
-function clampMaxChars(value: number): number {
-  return Math.min(MAX_MAX_CHARS, Math.max(MIN_MAX_CHARS, value));
-}
 
 export function Popup() {
   const [loaded, setLoaded] = useState(false);
@@ -62,7 +58,7 @@ export function Popup() {
         return;
       }
 
-      const state = normalizeState(changes[STORAGE_KEY]?.newValue as StorageState | undefined);
+      const state = normalizeState(changes[STORAGE_KEY]?.newValue);
       setEnabled(state.enabled);
       setMode(state.mode);
       setSelectionTrigger(state.selectionTrigger);
@@ -232,7 +228,7 @@ export function Popup() {
             type="button"
             className="btn btn-ghost"
             onClick={() => void testConnection()}
-            disabled={!loaded || testing}
+            disabled={!loaded || testing || !apiKeyInput.trim()}
           >
             {testing ? "Testing" : "Test"}
           </button>

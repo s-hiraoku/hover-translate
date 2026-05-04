@@ -10,28 +10,39 @@ import type {
 import { STORAGE_KEY, buildErrorResponse, defaultState, readStorageState } from "../shared/messages";
 import { fetchUsage, translate } from "./translator";
 
-chrome.runtime.onInstalled.addListener(() => {
-  void (async () => {
-    const [localResult, syncResult] = await Promise.all([
-      chrome.storage.local.get(STORAGE_KEY),
-      chrome.storage.sync.get(STORAGE_KEY),
-    ]);
+export async function ensureStorageInitialized(): Promise<void> {
+  const [localResult, syncResult] = await Promise.all([
+    chrome.storage.local.get(STORAGE_KEY),
+    chrome.storage.sync.get(STORAGE_KEY),
+  ]);
 
-    if (localResult[STORAGE_KEY]) {
-      if (syncResult[STORAGE_KEY]) {
-        await chrome.storage.sync.remove(STORAGE_KEY);
-      }
-      return;
-    }
+  const hasLocalState = Object.prototype.hasOwnProperty.call(localResult, STORAGE_KEY);
+  const hasSyncState = Object.prototype.hasOwnProperty.call(syncResult, STORAGE_KEY);
 
-    if (syncResult[STORAGE_KEY]) {
-      await chrome.storage.local.set({ [STORAGE_KEY]: syncResult[STORAGE_KEY] });
+  if (hasLocalState) {
+    if (hasSyncState) {
       await chrome.storage.sync.remove(STORAGE_KEY);
-      return;
     }
+    return;
+  }
 
-    await chrome.storage.local.set({ [STORAGE_KEY]: defaultState });
-  })();
+  if (hasSyncState) {
+    await chrome.storage.local.set({ [STORAGE_KEY]: syncResult[STORAGE_KEY] });
+    await chrome.storage.sync.remove(STORAGE_KEY);
+    return;
+  }
+
+  await chrome.storage.local.set({ [STORAGE_KEY]: defaultState });
+}
+
+void ensureStorageInitialized().catch((err: unknown) => {
+  console.error("[hover-translate] storage init failed", err);
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  ensureStorageInitialized().catch((err: unknown) => {
+    console.error("[hover-translate] storage init failed", err);
+  });
 });
 
 chrome.commands.onCommand.addListener((command) => {
@@ -64,7 +75,7 @@ chrome.runtime.onMessage.addListener(
     sendResponse: (res: TranslateResponse | TestKeyResponse | GetUsageResponse) => void,
   ) => {
     if (message?.type === "TEST_KEY") {
-      fetchUsage(message.key)
+      fetchUsage({ key: message.key })
         .then((usage) => sendResponse({ ok: true, usage }))
         .catch((err: unknown) => sendResponse(buildErrorResponse(err)));
       return true;

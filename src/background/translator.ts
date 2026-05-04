@@ -70,13 +70,19 @@ export async function translate(req: TranslateRequest): Promise<string> {
   return translated;
 }
 
-export async function fetchUsage(keyOverride?: string): Promise<DeepLUsage> {
-  const state = await readStorageState();
-  const effectiveKey = keyOverride?.trim() || state.deeplApiKey;
+export async function fetchUsage(override?: { key: string }): Promise<DeepLUsage> {
+  if (override) {
+    const trimmed = override.key.trim();
+    if (!trimmed) {
+      throw new DeepLError("MISSING_KEY", "DeepL API key not set");
+    }
+    return getUsage(trimmed);
+  }
 
-  if (!effectiveKey) {
+  const state = await readStorageState();
+  if (!state.deeplApiKey) {
     throw new DeepLError("MISSING_KEY", "DeepL API key not set");
   }
 
-  return getUsage(effectiveKey);
+  return getUsage(state.deeplApiKey);
 }

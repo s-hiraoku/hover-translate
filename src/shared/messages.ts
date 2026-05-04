@@ -84,24 +84,55 @@ export interface TranslateSelectionRequest {
   type: "TRANSLATE_SELECTION";
 }
 
-export function normalizeState(stored: StorageState | undefined): StorageState {
+export function clampMaxChars(n: number): number {
+  if (!Number.isFinite(n)) return DEFAULT_MAX_CHARS;
+  return Math.min(MAX_MAX_CHARS, Math.max(MIN_MAX_CHARS, Math.round(n)));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function normalizeMode(value: unknown): Mode {
+  return value === "hover" || value === "selection" ? value : defaultState.mode;
+}
+
+function normalizeSelectionTrigger(value: unknown): SelectionTrigger {
+  return value === "shortcut" || value === "auto" ? value : defaultState.selectionTrigger;
+}
+
+function normalizeTargetEnglish(value: unknown): StorageState["targetEnglish"] {
+  return value === "EN-US" || value === "EN-GB" ? value : defaultState.targetEnglish;
+}
+
+export function normalizeState(stored: unknown): StorageState {
+  if (!isRecord(stored)) {
+    return defaultState;
+  }
+
+  const deeplApiKey =
+    typeof stored.deeplApiKey === "string" ? stored.deeplApiKey.trim() || undefined : undefined;
+
   return {
-    ...defaultState,
-    ...stored,
-    deeplApiKey: stored?.deeplApiKey?.trim() || undefined,
+    enabled: stored.enabled === true,
+    mode: normalizeMode(stored.mode),
+    selectionTrigger: normalizeSelectionTrigger(stored.selectionTrigger),
+    targetEnglish: normalizeTargetEnglish(stored.targetEnglish),
+    maxChars: clampMaxChars(Number(stored.maxChars)),
+    deeplApiKey,
   };
 }
 
 export async function readStorageState(): Promise<StorageState> {
   const result = await chrome.storage.local.get(STORAGE_KEY);
-  return normalizeState(result[STORAGE_KEY] as StorageState | undefined);
+  return normalizeState(result[STORAGE_KEY]);
 }
 
 export async function updateStorageState(
   patch: Partial<StorageState>,
 ): Promise<StorageState> {
   const result = await chrome.storage.local.get(STORAGE_KEY);
-  const current = normalizeState(result[STORAGE_KEY] as StorageState | undefined);
+  const current = normalizeState(result[STORAGE_KEY]);
   const next = normalizeState({ ...current, ...patch });
   await chrome.storage.local.set({ [STORAGE_KEY]: next });
   return next;

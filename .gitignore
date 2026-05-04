@@ -7,6 +7,10 @@ node_modules/.tmp
 .synapse/
 .claude/
 .agents/
+.rig/
+tasks/
+result.md
+result.review.md
 # docs
 docs/node_modules
 docs/dist

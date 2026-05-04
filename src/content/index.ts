@@ -24,6 +24,14 @@ const MIN_TEXT_LENGTH = 3;
 const TOOLTIP_ATTR = "data-hover-translate-tooltip";
 const LOADING_INDICATOR = "…";
 const COPIED_STATE_DURATION_MS = 1200;
+const SKIP_TARGET_SELECTOR = [
+  "input",
+  "textarea",
+  "select",
+  '[contenteditable=""]',
+  '[contenteditable="true"]',
+  '[data-hover-translate="off"]',
+].join(",");
 const BLOCK_SELECTOR = [
   "p",
   "li",
@@ -99,7 +107,7 @@ function initialize(): void {
       return;
     }
 
-    const nextState = normalizeState(changes[STORAGE_KEY]?.newValue as StorageState | undefined);
+    const nextState = normalizeState(changes[STORAGE_KEY]?.newValue);
     applyState(nextState);
   });
 
@@ -164,6 +172,10 @@ function handleMouseOver(event: MouseEvent): void {
     event.target instanceof Element &&
     event.target.closest(`[${TOOLTIP_ATTR}="true"]`)
   ) {
+    return;
+  }
+
+  if (shouldSkipTarget(event.target)) {
     return;
   }
 
@@ -238,8 +250,12 @@ function handleMouseOut(event: MouseEvent): void {
   clearActiveState();
 }
 
-function handleMouseUp(): void {
+function handleMouseUp(event: MouseEvent): void {
   if (!enabled || mode !== "selection" || selectionTrigger !== "auto") {
+    return;
+  }
+
+  if (shouldSkipTarget(event.target)) {
     return;
   }
 
@@ -315,6 +331,10 @@ async function translateCurrentSelection(): Promise<void> {
   const selection = window.getSelection();
   if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
 
+  if (shouldSkipTarget(selection.anchorNode) || shouldSkipTarget(selection.focusNode)) {
+    return;
+  }
+
   const text = selection.toString().replace(/\s+/g, " ").trim();
   if (!text) return;
 
@@ -343,6 +363,15 @@ async function translateCurrentSelection(): Promise<void> {
     return;
   }
   showTooltipAtRect(result.translated, rect);
+}
+
+function shouldSkipTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Node)) {
+    return false;
+  }
+
+  const element = target instanceof Element ? target : target.parentElement;
+  return element?.closest(SKIP_TARGET_SELECTOR) !== null;
 }
 
 function findNearestTextBlock(target: EventTarget | null): HTMLElement | null {
