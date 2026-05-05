@@ -121,7 +121,7 @@ describe("DeepL translate response shape contract", () => {
     } satisfies Partial<DeepLError>);
   });
 
-  it("documents that null translations throws a raw TypeError before UNKNOWN mapping", async () => {
+  it("maps null translations to UNKNOWN", async () => {
     fetchMock().mockResolvedValue(mockFetchResponse({ json: { translations: null } }));
 
     await expect(
@@ -131,16 +131,13 @@ describe("DeepL translate response shape contract", () => {
         sourceLang: "EN",
         targetLang: "JA",
       }),
-    ).rejects.toThrow(TypeError);
+    ).rejects.toMatchObject({
+      code: "UNKNOWN",
+      message: "Unexpected DeepL translate response shape",
+    } satisfies Partial<DeepLError>);
   });
 
-  // Bug surfaced by this test: `result.translations[0]?.text` throws
-  // TypeError when `result.translations` itself is undefined because the
-  // optional chain is on `[0]?.text`, not `translations?.[0]`. Fixing
-  // the source to use `result.translations?.[0]?.text` is out of scope
-  // for this test task; documented here so a future change can flip the
-  // assertion back to a clean DeepLError("UNKNOWN").
-  it("throws TypeError when translations key is missing entirely", async () => {
+  it("maps a missing translations key to UNKNOWN", async () => {
     fetchMock().mockResolvedValue(mockFetchResponse({ json: {} }));
 
     await expect(
@@ -150,6 +147,9 @@ describe("DeepL translate response shape contract", () => {
         sourceLang: "EN",
         targetLang: "JA",
       }),
-    ).rejects.toThrow(TypeError);
+    ).rejects.toMatchObject({
+      code: "UNKNOWN",
+      message: "Unexpected DeepL translate response shape",
+    } satisfies Partial<DeepLError>);
   });
 });

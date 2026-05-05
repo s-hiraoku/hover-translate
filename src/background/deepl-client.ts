@@ -94,7 +94,7 @@ export async function translateText(args: {
 
   const okResponse = await ensureOk(response);
   const result = await parseJson<DeepLTranslateResult>(okResponse);
-  const translated = result.translations[0]?.text;
+  const translated = result.translations?.[0]?.text;
 
   if (typeof translated !== "string") {
     throw new DeepLError("UNKNOWN", "Unexpected DeepL translate response shape");
