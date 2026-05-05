@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Moss green rounded background -->
+  <rect width="128" height="128" rx="28" fill="#6b7c32"/>
+
+  <!-- Subtle top highlight for depth -->
+  <rect width="128" height="64" rx="28" fill="url(#grad)" opacity="0.18"/>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bold sans H -->
+  <g fill="#ffffff">
+    <rect x="28" y="28" width="12" height="72" rx="1.5"/>
+    <rect x="56" y="28" width="12" height="72" rx="1.5"/>
+    <rect x="28" y="58" width="40" height="12" rx="1.5"/>
+  </g>
+
+  <!-- Bold sans T -->
+  <g fill="#ffffff">
+    <rect x="72" y="28" width="32" height="12" rx="1.5"/>
+    <rect x="82" y="28" width="12" height="72" rx="1.5"/>
+  </g>
+</svg>
