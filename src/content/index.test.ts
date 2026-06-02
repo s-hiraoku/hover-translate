@@ -74,6 +74,43 @@ describe("content hover translation", () => {
     expect(tooltip().textContent).toContain("translated");
   });
 
+  it("preserves line breaks from hovered text and translated tooltip text", async () => {
+    const translated = "1行目\n2行目\n\n3行目";
+    const { sendMessage } = await bootContentScript({}, { ok: true, translated });
+    const paragraph = appendParagraph("First line\nSecond line\n\nThird line");
+
+    mouseover(paragraph);
+    await finishDebouncedWork();
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: "First line\nSecond line\n\nThird line",
+      }),
+    );
+    expect(tooltip().textContent).toContain(translated);
+  });
+
+  it("preserves rendered line breaks from br elements", async () => {
+    const { sendMessage } = await bootContentScript();
+    const paragraph = document.createElement("p");
+    paragraph.append("First line");
+    paragraph.appendChild(document.createElement("br"));
+    paragraph.append("Second line");
+    paragraph.appendChild(document.createElement("br"));
+    paragraph.appendChild(document.createElement("br"));
+    paragraph.append("Third line");
+    document.body.appendChild(paragraph);
+
+    mouseover(paragraph);
+    await finishDebouncedWork();
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: "First line\nSecond line\n\nThird line",
+      }),
+    );
+  });
+
   it("does not translate when disabled", async () => {
     const { sendMessage } = await bootContentScript({ enabled: false });
     const paragraph = appendParagraph("Hello world.");

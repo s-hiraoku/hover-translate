@@ -21,6 +21,8 @@ const HOVER_DELAY_MS = 300;
 const BACKGROUND_UNAVAILABLE_MSG = "Extension background is unavailable. Reload the page.";
 const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
 const MIN_TEXT_LENGTH = 3;
+const NON_LINE_BREAK_WHITESPACE_PATTERN = /[^\S\n]+/g;
+const EXCESSIVE_LINE_BREAK_PATTERN = /\n{3,}/g;
 const TOOLTIP_ATTR = "data-hover-translate-tooltip";
 const LOADING_INDICATOR = "…";
 const COPIED_STATE_DURATION_MS = 1200;
@@ -52,6 +54,44 @@ const BLOCK_SELECTOR = [
   '[data-testid="tweetText"]',
   ".notion-text-block",
 ].join(",");
+const TEXT_BOUNDARY_TAGS = new Set([
+  "ADDRESS",
+  "ARTICLE",
+  "ASIDE",
+  "BLOCKQUOTE",
+  "DD",
+  "DIV",
+  "DL",
+  "DT",
+  "FIGCAPTION",
+  "FIGURE",
+  "FOOTER",
+  "FORM",
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "H5",
+  "H6",
+  "HEADER",
+  "HR",
+  "LI",
+  "MAIN",
+  "NAV",
+  "OL",
+  "P",
+  "PRE",
+  "SECTION",
+  "TABLE",
+  "TBODY",
+  "TD",
+  "TFOOT",
+  "TH",
+  "THEAD",
+  "TR",
+  "UL",
+]);
+const SKIPPED_TEXT_TAGS = new Set(["NOSCRIPT", "SCRIPT", "STYLE", "TEMPLATE"]);
 
 let enabled = false;
 let mode: Mode = "hover";
@@ -335,7 +375,7 @@ async function translateCurrentSelection(): Promise<void> {
     return;
   }
 
-  const text = selection.toString().replace(/\s+/g, " ").trim();
+  const text = normalizeExtractedText(selection.toString());
   if (!text) return;
 
   const rect = selection.getRangeAt(0).getBoundingClientRect();
@@ -419,7 +459,92 @@ function isBlockLevel(element: HTMLElement): boolean {
 }
 
 function extractText(element: HTMLElement): string {
-  return (element.textContent ?? "").replace(/\s+/g, " ").trim();
+  return normalizeExtractedText(getRenderedText(element));
+}
+
+function getRenderedText(element: HTMLElement): string {
+  const renderedText = (element as HTMLElement & { innerText?: string }).innerText;
+  if (typeof renderedText === "string") {
+    return renderedText;
+  }
+
+  return extractDomText(element);
+}
+
+function extractDomText(root: Node): string {
+  const parts: string[] = [];
+  appendDomText(root, root, parts);
+  return parts.join("");
+}
+
+function appendDomText(node: Node, root: Node, parts: string[]): void {
+  if (node.nodeType === Node.TEXT_NODE) {
+    parts.push(node.textContent ?? "");
+    return;
+  }
+
+  if (!(node instanceof HTMLElement)) {
+    for (const child of node.childNodes) {
+      appendDomText(child, root, parts);
+    }
+    return;
+  }
+
+  if (shouldSkipTextElement(node)) {
+    return;
+  }
+
+  if (node.tagName === "BR") {
+    appendLineBreak(parts, true);
+    return;
+  }
+
+  const createsBoundary = node !== root && createsTextBoundary(node);
+  if (createsBoundary) {
+    appendLineBreak(parts);
+  }
+
+  for (const child of node.childNodes) {
+    appendDomText(child, root, parts);
+  }
+
+  if (createsBoundary) {
+    appendLineBreak(parts);
+  }
+}
+
+function shouldSkipTextElement(element: HTMLElement): boolean {
+  return (
+    SKIPPED_TEXT_TAGS.has(element.tagName) ||
+    element.hidden !== false ||
+    element.getAttribute("aria-hidden") === "true"
+  );
+}
+
+function createsTextBoundary(element: HTMLElement): boolean {
+  return TEXT_BOUNDARY_TAGS.has(element.tagName) || isBlockLevel(element);
+}
+
+function appendLineBreak(parts: string[], force = false): void {
+  const previousPart = parts.at(-1);
+  if (!previousPart) {
+    return;
+  }
+
+  if (force || !previousPart.endsWith("\n")) {
+    parts.push("\n");
+  }
+}
+
+function normalizeExtractedText(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .split("\n")
+    .map((line) => line.replace(NON_LINE_BREAK_WHITESPACE_PATTERN, " ").trim())
+    .join("\n")
+    .replace(EXCESSIVE_LINE_BREAK_PATTERN, "\n\n")
+    .trim();
 }
 
 function buildContext(element: HTMLElement): string | undefined {
@@ -698,7 +823,7 @@ function hasNonEmptySelection(): boolean {
 function getNormalizedSelectionText(): string {
   const selection = window.getSelection();
   if (!selection || selection.isCollapsed) return "";
-  return selection.toString().replace(/\s+/g, " ").trim();
+  return normalizeExtractedText(selection.toString());
 }
 
 function clearActiveState(): void {
