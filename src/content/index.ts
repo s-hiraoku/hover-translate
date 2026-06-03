@@ -91,6 +91,31 @@ const TEXT_BOUNDARY_TAGS = new Set([
   "TR",
   "UL",
 ]);
+const PARAGRAPH_BOUNDARY_TAGS = new Set([
+  "ADDRESS",
+  "ARTICLE",
+  "ASIDE",
+  "BLOCKQUOTE",
+  "DD",
+  "DIV",
+  "DT",
+  "FIGCAPTION",
+  "FIGURE",
+  "FOOTER",
+  "FORM",
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "H5",
+  "H6",
+  "HEADER",
+  "MAIN",
+  "NAV",
+  "P",
+  "PRE",
+  "SECTION",
+]);
 const SKIPPED_TEXT_TAGS = new Set(["NOSCRIPT", "SCRIPT", "STYLE", "TEMPLATE"]);
 
 let enabled = false;
@@ -375,7 +400,7 @@ async function translateCurrentSelection(): Promise<void> {
     return;
   }
 
-  const text = normalizeExtractedText(selection.toString());
+  const text = extractSelectionText(selection);
   if (!text) return;
 
   const rect = selection.getRangeAt(0).getBoundingClientRect();
@@ -462,6 +487,23 @@ function extractText(element: HTMLElement): string {
   return normalizeExtractedText(getRenderedText(element));
 }
 
+function extractSelectionText(selection: Selection): string {
+  const parts: string[] = [];
+
+  for (let index = 0; index < selection.rangeCount; index++) {
+    const rangeText = normalizeExtractedText(
+      extractDomText(selection.getRangeAt(index).cloneContents()),
+    );
+    if (rangeText) {
+      parts.push(rangeText);
+    }
+  }
+
+  return parts.length > 0
+    ? parts.join("\n\n")
+    : normalizeExtractedText(selection.toString());
+}
+
 function getRenderedText(element: HTMLElement): string {
   const renderedText = (element as HTMLElement & { innerText?: string }).innerText;
   if (typeof renderedText === "string") {
@@ -500,6 +542,8 @@ function appendDomText(node: Node, root: Node, parts: string[]): void {
   }
 
   const createsBoundary = node !== root && createsTextBoundary(node);
+  const createsParagraphBoundary =
+    createsBoundary && createsParagraphBoundaryAfter(node);
   if (createsBoundary) {
     appendLineBreak(parts);
   }
@@ -508,7 +552,9 @@ function appendDomText(node: Node, root: Node, parts: string[]): void {
     appendDomText(child, root, parts);
   }
 
-  if (createsBoundary) {
+  if (createsParagraphBoundary) {
+    appendParagraphBreak(parts);
+  } else if (createsBoundary) {
     appendLineBreak(parts);
   }
 }
@@ -525,6 +571,10 @@ function createsTextBoundary(element: HTMLElement): boolean {
   return TEXT_BOUNDARY_TAGS.has(element.tagName) || isBlockLevel(element);
 }
 
+function createsParagraphBoundaryAfter(element: HTMLElement): boolean {
+  return PARAGRAPH_BOUNDARY_TAGS.has(element.tagName);
+}
+
 function appendLineBreak(parts: string[], force = false): void {
   const previousPart = parts.at(-1);
   if (!previousPart) {
@@ -534,6 +584,11 @@ function appendLineBreak(parts: string[], force = false): void {
   if (force || !previousPart.endsWith("\n")) {
     parts.push("\n");
   }
+}
+
+function appendParagraphBreak(parts: string[]): void {
+  appendLineBreak(parts);
+  appendLineBreak(parts, true);
 }
 
 function normalizeExtractedText(text: string): string {
@@ -823,7 +878,7 @@ function hasNonEmptySelection(): boolean {
 function getNormalizedSelectionText(): string {
   const selection = window.getSelection();
   if (!selection || selection.isCollapsed) return "";
-  return normalizeExtractedText(selection.toString());
+  return extractSelectionText(selection);
 }
 
 function clearActiveState(): void {

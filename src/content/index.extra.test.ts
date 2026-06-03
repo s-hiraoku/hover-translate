@@ -259,7 +259,16 @@ describe("extra content re-translation and stale response coverage", () => {
 });
 
 describe("extra content shortcut selection coverage", () => {
-  function stubSelection(text: string, options: { collapsed?: boolean } = {}) {
+  function fragmentFromText(text: string): DocumentFragment {
+    const fragment = document.createDocumentFragment();
+    fragment.append(text);
+    return fragment;
+  }
+
+  function stubSelection(
+    text: string,
+    options: { collapsed?: boolean; fragment?: DocumentFragment } = {},
+  ) {
     const paragraph = appendParagraph("Before selected text after.");
     const textNode = paragraph.firstChild;
     expect(textNode).not.toBeNull();
@@ -267,6 +276,9 @@ describe("extra content shortcut selection coverage", () => {
     range.selectNodeContents(paragraph);
     Object.defineProperty(range, "getBoundingClientRect", {
       value: vi.fn(() => DOMRect.fromRect({ x: 10, y: 12, width: 80, height: 16 })),
+    });
+    Object.defineProperty(range, "cloneContents", {
+      value: vi.fn(() => options.fragment ?? fragmentFromText(text)),
     });
     const selection = {
       anchorNode: textNode,
@@ -300,6 +312,41 @@ describe("extra content shortcut selection coverage", () => {
         text: "Selected shortcut text",
         source: "en",
         target: "ja",
+      }),
+    );
+  });
+
+  it("preserves block boundaries when selected text crosses structured content", async () => {
+    const { sendMessage } = await bootContentScript({
+      mode: "selection",
+      selectionTrigger: "shortcut",
+    });
+    const fragment = document.createDocumentFragment();
+    const heading = document.createElement("h2");
+    heading.textContent = "What’s changed";
+    const firstParagraph = document.createElement("p");
+    firstParagraph.textContent =
+      "Worktrees are now driven by two explicit commands: /worktree and /best-of-n.";
+    const secondParagraph = document.createElement("p");
+    secondParagraph.textContent =
+      "/worktree starts an isolated Git checkout for the rest of a chat.";
+    fragment.append(heading, firstParagraph, secondParagraph);
+    stubSelection(
+      "What’s changedWorktrees are now driven by two explicit commands: /worktree and /best-of-n./worktree starts an isolated Git checkout for the rest of a chat.",
+      { fragment },
+    );
+
+    await (
+      chrome.runtime.onMessage as unknown as {
+        _emit: (message: unknown) => Promise<unknown>;
+      }
+    )._emit({ type: "TRANSLATE_SELECTION" });
+    await flushAsyncWork();
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "TRANSLATE",
+        text: "What’s changed\n\nWorktrees are now driven by two explicit commands: /worktree and /best-of-n.\n\n/worktree starts an isolated Git checkout for the rest of a chat.",
       }),
     );
   });
