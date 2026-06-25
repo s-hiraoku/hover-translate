@@ -16,7 +16,7 @@ Hover Translate のグローバルショートカットは 1 つだけで、Sele
 
 使い方:
 
-1. ポップアップを開いて DeepL API キーを保存し、拡張機能を ON にして、Mode を **Selection**、Trigger を **Shortcut** にします。
+1. ポップアップを開いて必要なら言語パックを準備し、拡張機能を ON にして、Mode を **Selection**、Trigger を **Shortcut** にします。
 2. 対応ページで翻訳したいテキストを選択します。
 3. `Alt+Shift+T` を押すと、選択範囲の近くにツールチップで翻訳が表示されます。
 

@@ -3,6 +3,6 @@
     "message": "Hover Translate: English ⇄ Japanese"
   },
   "extDescription": {
-    "message": "Hover over any paragraph to translate between English and Japanese. Powered by the DeepL Free API."
+    "message": "Hover over any paragraph to translate between English and Japanese with Chrome built-in translation."
   }
 }

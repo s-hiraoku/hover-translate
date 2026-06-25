@@ -52,46 +52,40 @@ afterEach(async () => {
   window.getSelection()?.removeAllRanges();
   vi.clearAllTimers();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
 describe("content hover translation", () => {
   it("translates an enabled hovered paragraph", async () => {
-    const { sendMessage } = await bootContentScript();
+    const { create, translate } = await bootContentScript();
     const paragraph = appendParagraph("Hello world.");
 
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(sendMessage).toHaveBeenCalledWith({
-      type: "TRANSLATE",
-      text: "Hello world.",
-      source: "en",
-      target: "ja",
-      context: undefined,
-    });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      sourceLanguage: "en",
+      targetLanguage: "ja",
+    }));
+    expect(translate).toHaveBeenCalledWith("Hello world.");
     expect(tooltip().textContent).toContain("translated");
   });
 
   it("preserves line breaks from hovered text and translated tooltip text", async () => {
     const translated = "1行目\n2行目\n\n3行目";
-    const { sendMessage } = await bootContentScript({}, { ok: true, translated });
+    const { translate } = await bootContentScript({}, { translate: translated });
     const paragraph = appendParagraph("First line\nSecond line\n\nThird line");
 
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        text: "First line\nSecond line\n\nThird line",
-      }),
-    );
+    expect(translate).toHaveBeenCalledWith("First line\nSecond line\n\nThird line");
     expect(tooltip().textContent).toContain(translated);
   });
 
   it("preserves rendered line breaks from br elements", async () => {
-    const { sendMessage } = await bootContentScript();
+    const { translate } = await bootContentScript();
     const paragraph = document.createElement("p");
     paragraph.append("First line");
     paragraph.appendChild(document.createElement("br"));
@@ -104,25 +98,21 @@ describe("content hover translation", () => {
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        text: "First line\nSecond line\n\nThird line",
-      }),
-    );
+    expect(translate).toHaveBeenCalledWith("First line\nSecond line\n\nThird line");
   });
 
   it("does not translate when disabled", async () => {
-    const { sendMessage } = await bootContentScript({ enabled: false });
+    const { translate } = await bootContentScript({ enabled: false });
     const paragraph = appendParagraph("Hello world.");
 
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(translate).not.toHaveBeenCalled();
   });
 
   it("applies enabled state changes from storage without reimporting", async () => {
-    const { sendMessage, state } = await bootContentScript({ enabled: false });
+    const { translate, state } = await bootContentScript({ enabled: false });
     await chrome.storage.local.set({
       [STORAGE_KEY]: { ...state, enabled: true },
     });
@@ -132,11 +122,11 @@ describe("content hover translation", () => {
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(translate).toHaveBeenCalledTimes(1);
   });
 
   it("skips form controls, editable regions, and explicit opt-out elements", async () => {
-    const { sendMessage } = await bootContentScript();
+    const { translate } = await bootContentScript();
 
     const input = document.createElement("input");
     input.value = "Hello from input";
@@ -171,20 +161,18 @@ describe("content hover translation", () => {
     mouseover(plain);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "Hello plain paragraph." }),
-    );
+    expect(translate).toHaveBeenCalledTimes(1);
+    expect(translate).toHaveBeenCalledWith("Hello plain paragraph.");
   });
 
   it("suppresses hover translation in selection mode", async () => {
-    const { sendMessage } = await bootContentScript({ mode: "selection" });
+    const { translate } = await bootContentScript({ mode: "selection" });
     const paragraph = appendParagraph("Hello world.");
 
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(translate).not.toHaveBeenCalled();
   });
 });
 
@@ -194,7 +182,7 @@ describe("content selection translation", () => {
   // This is a known jsdom limitation (whatwg/dom#127); skip until a real
   // browser test runner is wired up.
   it.skip("translates selected text when selection mode uses the auto trigger", async () => {
-    const { sendMessage } = await bootContentScript({
+    const { translate } = await bootContentScript({
       mode: "selection",
       selectionTrigger: "auto",
     });
@@ -206,18 +194,12 @@ describe("content selection translation", () => {
     document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith({
-      type: "TRANSLATE",
-      text: "Hello selected",
-      source: "en",
-      target: "ja",
-      context: undefined,
-    });
+    expect(translate).toHaveBeenCalledWith("Hello selected");
     expect(tooltip().textContent).toContain("translated");
   });
 
   it("does not auto-translate selected text when selection mode uses shortcut trigger", async () => {
-    const { sendMessage } = await bootContentScript({
+    const { translate } = await bootContentScript({
       mode: "selection",
       selectionTrigger: "shortcut",
     });
@@ -229,11 +211,11 @@ describe("content selection translation", () => {
     document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
     await finishDebouncedWork();
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(translate).not.toHaveBeenCalled();
   });
 
   it("skips mouseup selection handling from inside inputs", async () => {
-    const { sendMessage } = await bootContentScript({
+    const { translate } = await bootContentScript({
       mode: "selection",
       selectionTrigger: "auto",
     });
@@ -246,7 +228,7 @@ describe("content selection translation", () => {
     input.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
     await finishDebouncedWork();
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(translate).not.toHaveBeenCalled();
   });
 });
 
@@ -256,15 +238,17 @@ describe("content language detection", () => {
     ["こんにちは", "ja", "en"],
     ["Hello こんにちは", "ja", "en"],
   ] as const)("routes %s as %s to %s", async (text, source, target) => {
-    const { sendMessage } = await bootContentScript();
+    const { create, translate } = await bootContentScript();
     const paragraph = appendParagraph(text);
 
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ text, source, target }),
-    );
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      sourceLanguage: source,
+      targetLanguage: target,
+    }));
+    expect(translate).toHaveBeenCalledWith(text);
   });
 });
 
@@ -272,19 +256,19 @@ describe("content text limits and block detection", () => {
   it("shows a client-side too-long error without sending a request", async () => {
     // normalizeState clamps maxChars to MIN_MAX_CHARS, so use the default.
     const limit = defaultState.maxChars;
-    const { sendMessage } = await bootContentScript({ maxChars: limit });
+    const { translate } = await bootContentScript({ maxChars: limit });
     const paragraph = appendParagraph("x".repeat(limit + 1));
 
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(translate).not.toHaveBeenCalled();
     expect(tooltip().textContent).toContain(messageForCode("TEXT_TOO_LONG", limit));
     expect(tooltip().dataset.state).toBe("error");
   });
 
   it("uses the nearest paragraph when hovering an inline child", async () => {
-    const { sendMessage } = await bootContentScript();
+    const { translate } = await bootContentScript();
     const paragraph = appendParagraph("Full paragraph text");
     const span = document.createElement("span");
     span.textContent = "child";
@@ -293,13 +277,11 @@ describe("content text limits and block detection", () => {
     mouseover(span);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "Full paragraph textchild" }),
-    );
+    expect(translate).toHaveBeenCalledWith("Full paragraph textchild");
   });
 
   it("uses an explicit block display ancestor as a fallback", async () => {
-    const { sendMessage } = await bootContentScript();
+    const { translate } = await bootContentScript();
     const wrapper = document.createElement("div");
     wrapper.style.display = "block";
     wrapper.append("Fallback block text ");
@@ -311,13 +293,11 @@ describe("content text limits and block detection", () => {
     mouseover(span);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "Fallback block text inside" }),
-    );
+    expect(translate).toHaveBeenCalledWith("Fallback block text inside");
   });
 
   it('treats [data-as="p"] as a text block', async () => {
-    const { sendMessage } = await bootContentScript();
+    const { translate } = await bootContentScript();
     const block = document.createElement("div");
     block.dataset.as = "p";
     block.textContent = "Hi there";
@@ -326,9 +306,7 @@ describe("content text limits and block detection", () => {
     mouseover(block);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "Hi there" }),
-    );
+    expect(translate).toHaveBeenCalledWith("Hi there");
   });
 });
 
@@ -349,13 +327,9 @@ describe("content tooltip lifecycle", () => {
   });
 
   it("replaces tooltip text when hovering a different block", async () => {
-    const sendMessage = vi.fn(async (request: { text: string }) => ({
-      ok: true,
-      translated: `translated:${request.text}`,
-    }));
-    await bootContentScript();
-    (chrome.runtime as unknown as { sendMessage: typeof sendMessage }).sendMessage =
-      sendMessage;
+    const { translate } = await bootContentScript({}, {
+      translate: (text) => `translated:${text}`,
+    });
     const first = appendParagraph("First text.");
     const second = appendParagraph("Second text.");
 
@@ -369,12 +343,12 @@ describe("content tooltip lifecycle", () => {
     mouseover(second);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(translate).toHaveBeenCalledTimes(2);
     expect(tooltip().textContent).toContain("translated:Second text.");
   });
 
   it("does not send a second request while hovering the same active block again", async () => {
-    const { sendMessage } = await bootContentScript();
+    const { translate } = await bootContentScript();
     const paragraph = appendParagraph("Hello world.");
 
     mouseover(paragraph);
@@ -382,40 +356,33 @@ describe("content tooltip lifecycle", () => {
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(translate).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("content translation errors", () => {
-  it("renders error responses from the background", async () => {
-    await bootContentScript({}, { ok: false, errorCode: "INVALID_KEY" });
+  it("renders unavailable language-pair errors", async () => {
+    await bootContentScript({}, { availability: "unavailable" });
     const paragraph = appendParagraph("Hello world.");
 
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(tooltip().textContent).toContain(
-      "Invalid DeepL API key. Check the key in the popup.",
-    );
+    expect(tooltip().textContent).toContain(messageForCode("LANGUAGE_PACK_UNAVAILABLE"));
     expect(tooltip().dataset.state).toBe("error");
     expect(tooltip().style.borderLeft).not.toContain("transparent");
   });
 
-  it("renders the background-unavailable message when sendMessage rejects", async () => {
-    await bootContentScript();
-    const sendMessage = vi.fn(async () => {
-      throw new Error("background down");
+  it("renders the prepare prompt when model creation needs user activation", async () => {
+    await bootContentScript({}, {
+      createError: new DOMException("activation required", "NotAllowedError"),
     });
-    (chrome.runtime as unknown as { sendMessage: typeof sendMessage }).sendMessage =
-      sendMessage;
     const paragraph = appendParagraph("Hello world.");
 
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(tooltip().textContent).toContain(
-      "Extension background is unavailable. Reload the page.",
-    );
+    expect(tooltip().textContent).toContain(messageForCode("LANGUAGE_PACK_DOWNLOAD_REQUIRED"));
     expect(tooltip().dataset.state).toBe("error");
   });
 });

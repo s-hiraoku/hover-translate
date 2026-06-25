@@ -1,94 +1,62 @@
 ---
 title: 設定
-description: 拡張機能の設定項目と構成方法を確認できます。
+description: 拡張機能の設定項目を確認します。
 ---
 
 import { Image } from "astro:assets";
 import popupActive from "../../../assets/screenshots/popup-active.png";
-import popupQuotaDanger from "../../../assets/screenshots/popup-quota-danger.png";
 
 # 設定
 
-ポップアップ UI は、**Setup**、**Translate**、**Quota**、**Limits** の 4 つのセクションで構成されています。すべての設定は `chrome.storage.local` の `hoverTranslateState` キーに保存され、ブラウザを再起動しても保持されます。
+ポップアップは **Engine**、**Translate**、**Limits** の 3 セクションです。設定は `chrome.storage.local` の `hoverTranslateState` に保存されます。
 
-## Setup
+## Engine
 
-**Setup** (セットアップ) セクションでは、DeepL の認証情報を扱います。
+Chrome built-in Translator API の準備状況を表示します。
 
-- **DeepL API Key** はパスワード形式の入力欄です。
-- **Save** を押すと、現在のキーが `chrome.storage.local` に保存されます。
-- **Test** は DeepL の `/v2/usage` エンドポイントを呼び出し、キーの有効性とクォータ情報の取得可否を確認します。
-- キーがまだ保存されていない場合は、**API key required** バナーが表示されます。
-- 接続テストで発生したエラーは、そのままポップアップ内に表示されます。
+- **Ready for English ⇄ Japanese**: 必要な言語パックが利用可能です。
+- **Prepare language packs before first use**: 言語パックのダウンロードを開始できますが、ユーザー操作が必要です。
+- **Prepare**: 英語 → 日本語、日本語 → 英語の言語パック準備を開始します。
+- **Chrome 138+ desktop required**: Translator API が利用できないブラウザです。
 
 ## Translate
 
-**Translate** (翻訳) セクションは拡張機能のメインコントロールで、4 つの操作があります。
-
 ### ON/OFF トグル
 
-コーラルのピルトグルは拡張機能全体の有効・無効を切り替えます。OFF にするとモードに関わらず何も動作しません。トグルは DeepL API キーを保存するまで操作できません。
+拡張機能全体の有効・無効を切り替えます。OFF のときはどのモードでも翻訳しません。
 
-### Mode スイッチ
+### Mode
 
-2 つのモードを切り替えます。
+- **Hover**: 300ms の待機後、最も近い段落を翻訳します。
+- **Selection**: 選択したテキストだけを翻訳します。
 
-- **Hover** — カーソルがブロック要素にホバーすると 300 ms のディレイ後に最寄りの段落を翻訳します。
-- **Selection** — ユーザーが明示的に選択したテキストだけを翻訳します。
+### Trigger
 
-モードを切り替えると即座に反映され、前のモードで実行中だった翻訳は破棄されます。
+Selection mode では翻訳の発火方法を選べます。
 
-### Trigger スイッチ (Selection モードのみ)
+- **Shortcut**: テキスト選択中に `Alt+Shift+T` を押します。
+- **Auto**: マウスを離してから 300ms 後に自動翻訳します。
 
-Mode が **Selection** のときに追加で表示されるスイッチで、翻訳の開始方法を選びます。
+### Shortcut row
 
-- **Shortcut** — テキストを選択した状態で `Alt+Shift+T` を押すと翻訳します。押さない限り何も起きません。
-- **Auto** — マウスを離してから 300 ms 後に選択範囲があれば自動で翻訳します。
+現在のショートカットは **Selection + Shortcut** のときだけ表示されます。**Change** は `chrome://extensions/shortcuts` を開きます。
 
-### Shortcut 行
-
-現在のショートカット (既定 `⌥⇧T`) は **Selection + Shortcut** モードのときだけ表示されます。このモードのみショートカットを使うためです。**Change** リンクから `chrome://extensions/shortcuts` を開いて別のキー組み合わせに変更できます。
-
-<Image src={popupActive} alt="Translate セクションが Selection + Shortcut モードになったポップアップ" width={340} />
-
-## Quota
-
-**Quota** (クォータ) セクションでは、DeepL Free の使用量を確認できます。
-
-- 利用量はプログレスバーで表示されます。
-- 取得結果はポップアップ側で 30 秒間キャッシュされるため、無駄なリクエストは送信されません。
-- **Refresh** を押すと強制的に DeepL から最新値を取得します。
-- バーの色はしきい値に応じて変わります。
-  - 通常時は OK
-  - 80% 超で Warn
-  - 95% 超で Danger
-
-DeepL Free の月間クォータは毎月自動でリセットされるため、課金しなくても翌月には復活します。長い文章を多く読む前にここを確認しておくと、無料枠に近づいているかを把握しやすくなります。
-
-<Image src={popupQuotaDanger} alt="クォータが危険状態のポップアップ画面" width={340} />
+<Image src={popupActive} alt="Selection + Shortcut mode のポップアップ" width={340} />
 
 ## Limits
 
-**Limits** (制限) セクションでは、1 回の翻訳で送信できる文字数の上限を決めます。
-
-- **Max characters per request** は 500 から 5000 の範囲で設定できます。
-- 既定値は 1500 です。
-- この値は `Text too long` エラーの判定基準にも使われます。
-- Hover モードでは、祖先の DOM を遡るときの文字数バジェットにも使われます。これによって大きなコンテナが誤って翻訳対象になるのを防ぎます。
+- **Max characters per request** は 500 から 5000 まで設定できます。
+- 初期値は 1500 です。
+- 上限を超えるテキストでは `Text too long` エラーを表示します。
+- Hover mode では、翻訳対象の祖先要素を探す範囲の上限にも使われます。
 
 ## 保存される状態
-
-Hover Translate は `hoverTranslateState` の中に次のような値を保持します。
 
 ```json
 {
   "enabled": true,
   "mode": "hover",
   "selectionTrigger": "shortcut",
-  "deeplApiKey": "your-key",
-  "targetEnglish": "EN-US",
   "maxChars": 1500
 }
 ```
-
-現在の実装では `targetEnglish` は `EN-US` 固定ですが、保存スキーマ上は `EN-GB` も表現できます。

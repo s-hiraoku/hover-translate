@@ -5,20 +5,23 @@ import type {
   StorageState,
   TargetLang,
   TranslateSelectionRequest,
-  TranslateRequest,
-  TranslateResponse,
 } from "../shared/messages";
+import type { BuiltInTranslator, DownloadProgress, TranslatorPair } from "../shared/browser-ai";
+import {
+  createTranslator,
+  hasBuiltInTranslator,
+  isUserActivationError,
+  translatorAvailability,
+} from "../shared/browser-ai";
 import {
   STORAGE_KEY,
   defaultState,
   messageForCode,
   normalizeState,
   readStorageState,
-  resolveErrorMessage,
 } from "../shared/messages";
 
 const HOVER_DELAY_MS = 300;
-const BACKGROUND_UNAVAILABLE_MSG = "Extension background is unavailable. Reload the page.";
 const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
 const MIN_TEXT_LENGTH = 3;
 const NON_LINE_BREAK_WHITESPACE_PATTERN = /[^\S\n]+/g;
@@ -144,6 +147,7 @@ let tooltipContent: HTMLDivElement;
 let copyButton: HTMLButtonElement;
 let copyButtonState: CopyButtonState = "hidden";
 let copiedStateTimeout: number | null = null;
+const translatorCache = new Map<string, Promise<BuiltInTranslator>>();
 
 const tooltip = createTooltip();
 
@@ -345,25 +349,58 @@ function handleSelectionChange(): void {
 
 async function requestTranslation(
   text: string,
-  context?: string,
+  onDownloadProgress?: (progress: DownloadProgress) => void,
 ): Promise<{ kind: "ok"; translated: string } | { kind: "error"; message: string }> {
   const [source, target] = detectLanguages(text);
-  try {
-    const response = (await chrome.runtime.sendMessage({
-      type: "TRANSLATE",
-      text,
-      context,
-      source,
-      target,
-    } satisfies TranslateRequest)) as TranslateResponse;
+  const pair = { sourceLanguage: source, targetLanguage: target } satisfies TranslatorPair;
 
-    if (response.ok && response.translated) {
-      return { kind: "ok", translated: response.translated };
+  try {
+    const availability = await translatorAvailability(pair);
+    if (availability === "unavailable") {
+      return {
+        kind: "error",
+        message: messageForCode(
+          hasBuiltInTranslator() ? "LANGUAGE_PACK_UNAVAILABLE" : "TRANSLATOR_UNSUPPORTED",
+        ),
+      };
     }
-    return { kind: "error", message: resolveErrorMessage(response, maxCharsLimit) };
-  } catch {
-    return { kind: "error", message: BACKGROUND_UNAVAILABLE_MSG };
+
+    const translator = await getCachedTranslator(pair, onDownloadProgress);
+    return { kind: "ok", translated: await translator.translate(text) };
+  } catch (error) {
+    const code = isUserActivationError(error)
+      ? "LANGUAGE_PACK_DOWNLOAD_REQUIRED"
+      : "UNKNOWN";
+    return { kind: "error", message: messageForCode(code) };
   }
+}
+
+function translatorCacheKey(pair: TranslatorPair): string {
+  return `${pair.sourceLanguage}:${pair.targetLanguage}`;
+}
+
+function getCachedTranslator(
+  pair: TranslatorPair,
+  onDownloadProgress?: (progress: DownloadProgress) => void,
+): Promise<BuiltInTranslator> {
+  const key = translatorCacheKey(pair);
+  const cached = translatorCache.get(key);
+  if (cached) return cached;
+
+  const translator = createTranslator(pair, onDownloadProgress).catch((error: unknown) => {
+    translatorCache.delete(key);
+    throw error;
+  });
+  translatorCache.set(key, translator);
+  return translator;
+}
+
+function formatDownloadProgress(progress: DownloadProgress): string {
+  const percent =
+    typeof progress.loaded === "number" && Number.isFinite(progress.loaded)
+      ? Math.max(0, Math.min(100, Math.round(progress.loaded * 100)))
+      : 0;
+  return `Downloading language pack ${percent}%`;
 }
 
 async function translateAndShow(element: HTMLElement): Promise<void> {
@@ -379,8 +416,11 @@ async function translateAndShow(element: HTMLElement): Promise<void> {
   }
 
   showTooltip(LOADING_INDICATOR, element);
-  const context = buildContext(element);
-  const result = await requestTranslation(text, context);
+  const result = await requestTranslation(text, (progress) => {
+    if (generation === currentGeneration && activeElement === element) {
+      showTooltip(formatDownloadProgress(progress), element);
+    }
+  });
   if (generation !== currentGeneration || activeElement !== element) return;
 
   if (result.kind === "error") {
@@ -413,8 +453,11 @@ async function translateCurrentSelection(): Promise<void> {
   }
 
   showTooltipAtRect(LOADING_INDICATOR, rect);
-  const context = buildSelectionContext(selection);
-  const result = await requestTranslation(text, context);
+  const result = await requestTranslation(text, (progress) => {
+    if (generation === currentGeneration && selectionSnapshot === selectionGeneration) {
+      showTooltipAtRect(formatDownloadProgress(progress), rect);
+    }
+  });
   if (
     generation !== currentGeneration ||
     selectionSnapshot !== selectionGeneration ||
@@ -600,35 +643,6 @@ function normalizeExtractedText(text: string): string {
     .join("\n")
     .replace(EXCESSIVE_LINE_BREAK_PATTERN, "\n\n")
     .trim();
-}
-
-function buildContext(element: HTMLElement): string | undefined {
-  const parts: string[] = [];
-  const prev = element.previousElementSibling;
-  if (prev instanceof HTMLElement) {
-    const prevText = extractText(prev);
-    if (prevText) parts.push(prevText.slice(-500));
-  }
-
-  const next = element.nextElementSibling;
-  if (next instanceof HTMLElement) {
-    const nextText = extractText(next);
-    if (nextText) parts.push(nextText.slice(0, 500));
-  }
-
-  return parts.length > 0 ? parts.join("\n\n") : undefined;
-}
-
-function buildSelectionContext(selection: Selection): string | undefined {
-  if (selection.rangeCount === 0) return undefined;
-
-  const range = selection.getRangeAt(0);
-  const container = range.commonAncestorContainer;
-  const element = container instanceof HTMLElement ? container : container.parentElement;
-  if (!element) return undefined;
-
-  const block = element.closest(BLOCK_SELECTOR);
-  return block instanceof HTMLElement ? buildContext(block) : undefined;
 }
 
 function detectLanguages(text: string): [SourceLang, TargetLang] {

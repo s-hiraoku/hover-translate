@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  buildErrorResponse,
   clampMaxChars,
   DEFAULT_MAX_CHARS,
   defaultState,
@@ -9,7 +8,6 @@ import {
   MIN_MAX_CHARS,
   normalizeState,
   readStorageState,
-  resolveErrorMessage,
   STORAGE_KEY,
   updateStorageState,
 } from "./messages";
@@ -63,14 +61,6 @@ describe("normalizeState", () => {
     },
   );
 
-  it.each(["EN-US", "EN-GB"] as const)("passes through valid targetEnglish %s", (targetEnglish) => {
-    expect(normalizeState({ targetEnglish }).targetEnglish).toBe(targetEnglish);
-  });
-
-  it.each(["EN", "JA", 42, null])("falls back for invalid targetEnglish %s", (targetEnglish) => {
-    expect(normalizeState({ targetEnglish }).targetEnglish).toBe(defaultState.targetEnglish);
-  });
-
   it.each([
     [1500, 1500],
     [MIN_MAX_CHARS - 1, MIN_MAX_CHARS],
@@ -84,25 +74,12 @@ describe("normalizeState", () => {
     expect(normalizeState({ maxChars }).maxChars).toBe(expected);
   });
 
-  it.each([
-    ["  abc:def  ", "abc:def"],
-    ["", undefined],
-    ["   ", undefined],
-    [123, undefined],
-    [{ key: "abc" }, undefined],
-    ["valid-key", "valid-key"],
-  ])("normalizes deeplApiKey=%s to %s", (deeplApiKey, expected) => {
-    expect(normalizeState({ deeplApiKey }).deeplApiKey).toBe(expected);
-  });
-
   it("round-trips a complete realistic stored object", () => {
     const stored: StorageState = {
       enabled: true,
       mode: "selection",
       selectionTrigger: "auto",
-      targetEnglish: "EN-GB",
       maxChars: 2300,
-      deeplApiKey: "abc123",
     };
 
     expect(normalizeState(stored)).toEqual(stored);
@@ -178,14 +155,17 @@ describe("readStorageState and updateStorageState", () => {
   });
 });
 
-describe("messageForCode, resolveErrorMessage, and buildErrorResponse", () => {
+describe("messageForCode", () => {
   it.each([
-    ["MISSING_KEY", "Set your DeepL API key from the extension popup."],
-    ["INVALID_KEY", "Invalid DeepL API key. Check the key in the popup."],
-    ["QUOTA_EXCEEDED", "DeepL free quota exceeded this period."],
-    ["RATE_LIMITED", "DeepL rate limit hit. Slow down and try again."],
-    ["SERVER_ERROR", "DeepL is temporarily unavailable. Try again shortly."],
-    ["NETWORK_ERROR", "Network error reaching DeepL."],
+    [
+      "TRANSLATOR_UNSUPPORTED",
+      "Chrome built-in translation is unavailable in this browser. Use desktop Chrome 138 or later.",
+    ],
+    ["LANGUAGE_PACK_UNAVAILABLE", "English-Japanese translation is unavailable on this device."],
+    [
+      "LANGUAGE_PACK_DOWNLOAD_REQUIRED",
+      "Language pack download needs a click. Open the popup and press Prepare.",
+    ],
     ["TEXT_TOO_LONG", `Text too long (max ${DEFAULT_MAX_CHARS} chars).`],
     ["UNKNOWN", "Translation failed."],
   ] satisfies [TranslateErrorCode, string][])("returns the exact message for %s", (code, message) => {
@@ -198,43 +178,5 @@ describe("messageForCode, resolveErrorMessage, and buildErrorResponse", () => {
 
   it("falls back to DEFAULT_MAX_CHARS for TEXT_TOO_LONG without maxChars", () => {
     expect(messageForCode("TEXT_TOO_LONG")).toContain(String(DEFAULT_MAX_CHARS));
-  });
-
-  it("resolveErrorMessage prefers errorCode over error string", () => {
-    expect(resolveErrorMessage({ ok: false, errorCode: "INVALID_KEY", error: "raw" })).toBe(
-      messageForCode("INVALID_KEY"),
-    );
-  });
-
-  it("resolveErrorMessage uses error string when no code is present", () => {
-    expect(resolveErrorMessage({ ok: false, error: "raw" })).toBe("raw");
-  });
-
-  it("resolveErrorMessage uses a generic fallback when neither code nor error is present", () => {
-    expect(resolveErrorMessage({ ok: false })).toBe("Translation failed.");
-  });
-
-  it("buildErrorResponse maps DeepLError-shaped objects", () => {
-    expect(buildErrorResponse({ code: "RATE_LIMITED", message: "Too many requests" })).toEqual({
-      ok: false,
-      errorCode: "RATE_LIMITED",
-      error: messageForCode("RATE_LIMITED"),
-    });
-  });
-
-  it("buildErrorResponse maps generic Error instances", () => {
-    expect(buildErrorResponse(new Error("boom"))).toEqual({
-      ok: false,
-      errorCode: "UNKNOWN",
-      error: "boom",
-    });
-  });
-
-  it("buildErrorResponse maps string errors", () => {
-    expect(buildErrorResponse("plain failure")).toEqual({
-      ok: false,
-      errorCode: "UNKNOWN",
-      error: "plain failure",
-    });
   });
 });

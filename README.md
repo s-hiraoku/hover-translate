@@ -3,13 +3,14 @@
 [![CI](https://github.com/s-hiraoku/hover-translate/actions/workflows/ci.yml/badge.svg)](https://github.com/s-hiraoku/hover-translate/actions/workflows/ci.yml)
 [![Release](https://github.com/s-hiraoku/hover-translate/actions/workflows/release.yml/badge.svg)](https://github.com/s-hiraoku/hover-translate/actions/workflows/release.yml)
 
-Chrome extension that translates hovered text blocks between English and Japanese.
+Chrome extension that translates hovered text blocks between English and Japanese with Chrome built-in translation.
 
 ## Features
 
 - Toggle ON/OFF from the popup
 - Hover over a paragraph, heading, list item, or other block element to translate it
 - Automatic language detection — Japanese → English, everything else → Japanese
+- Free on-device translation via Chrome's built-in Translator API
 - Translations appear in a floating tooltip next to the hovered element
 
 ## Stack
@@ -35,10 +36,10 @@ Load `dist/` via `chrome://extensions` → "Load unpacked".
 ```
 src/
   manifest.ts              # MV3 manifest (crxjs)
-  shared/messages.ts       # shared types between background/content/popup
+  shared/messages.ts       # shared storage/message types
+  shared/browser-ai.ts     # Chrome built-in Translator API wrapper
   background/
-    service-worker.ts      # MV3 service worker entry
-    translator.ts          # translate() implementation
+    service-worker.ts      # storage init + shortcut routing
   content/
     index.ts               # hover detection + tooltip rendering
   popup/
@@ -54,7 +55,8 @@ public/
 
 ## Notes
 
-- Translation is powered by the DeepL Free API. Users must supply their own key via the popup.
+- Translation is powered by Chrome's built-in Translator API. Users do not need a DeepL or cloud translation API key.
+- Desktop Chrome 138+ is required for built-in translation.
 - Documentation site: [s-hiraoku.github.io/hover-translate](https://s-hiraoku.github.io/hover-translate/)
 
 ## Releasing a new version

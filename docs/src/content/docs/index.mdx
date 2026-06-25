@@ -20,7 +20,7 @@ import popupActive from "../../assets/screenshots/popup-active.png";
 
 ## Why Hover Translate?
 
-A lightweight Chrome extension that translates paragraph-sized text blocks between English and Japanese, on demand, without ever leaving the page. Powered by the DeepL Free API.
+A lightweight Chrome extension that translates paragraph-sized text blocks between English and Japanese, on demand, without ever leaving the page. Powered by Chrome's built-in on-device Translator API.
 
 <CardGrid>
   <Card title="Two modes" icon="setting">
@@ -30,7 +30,7 @@ A lightweight Chrome extension that translates paragraph-sized text blocks betwe
     Auto-detects English or Japanese — no toggling.
   </Card>
   <Card title="Private" icon="seti:lock">
-    Your API key stays in chrome.storage.local. No tracking, no analytics.
+    No translation API key, no project server, no analytics.
   </Card>
   <Card title="Keyboard-first" icon="keyboard">
     Alt+Shift+T translates the current selection in Selection mode.
@@ -43,7 +43,7 @@ Hover Translate is a Chrome extension for reading bilingual pages with less fric
 
 ## How It Works
 
-1. Save your DeepL Free API key in the extension popup.
+1. Prepare Chrome's English ⇄ Japanese language packs from the extension popup if prompted.
 2. Pick a mode: **Hover** translates the nearest paragraph on mouse hover; **Selection** translates the current text selection via shortcut or automatically after you release the mouse.
 3. Hover Translate detects the language automatically (Japanese ⇄ English) and shows the result in a floating tooltip anchored to the text.
 
@@ -51,14 +51,14 @@ Hover Translate is a Chrome extension for reading bilingual pages with less fric
 
 <CardGrid>
   <LinkCard title="Getting Started" href="/hover-translate/getting-started/">
-    Install the extension, get a DeepL API key, and verify the connection.
+    Install the extension, prepare language packs, and verify translation.
   </LinkCard>
   <LinkCard title="Features" href="/hover-translate/features/">
-    Review hover mode, selection mode, language detection, caching, tooltips, and quota handling.
+    Review hover mode, selection mode, language detection, tooltips, and local translation behavior.
   </LinkCard>
   <LinkCard title="Troubleshooting" href="/hover-translate/troubleshooting/">
-    Find fixes for API key, quota, network, and text length errors.
+    Find fixes for browser support, language pack, and text length errors.
   </LinkCard>
 </CardGrid>
 
-Built with DeepL API Free. Hover Translate stores your API key locally and never tracks you.
+Built with Chrome's built-in Translator API. Hover Translate does not store a translation API key and never tracks you.

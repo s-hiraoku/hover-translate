@@ -24,17 +24,17 @@ Use `installChromeMock()` when a test needs realistic `chrome.storage`, `runtime
 
 ## Architecture
 
-Chrome MV3 extension that translates hovered text blocks between English and Japanese. Three runtimes share state through `chrome.storage.local` and talk through `chrome.runtime.sendMessage`:
+Chrome MV3 extension that translates hovered text blocks between English and Japanese. Runtime settings are stored in `chrome.storage.local`; the selection shortcut is routed through `chrome.runtime.sendMessage`:
 
-- **Content script** (`src/content/index.ts`) — listens on `<all_urls>`. On `mouseover`, walks up the DOM until it finds the nearest block element (`BLOCK_SELECTOR`) containing text, debounces ~300ms, detects language via `/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/` (Japanese → `ja`→`en`, else `en`→`ja`), and sends a `TRANSLATE` message to the background. Results render in a single floating `<div>` appended to `document.documentElement` with `z-index: 2147483647`. The content script does not memoize per element; duplicate completed translations are served by the background LRU cache, while `currentGeneration` invalidates stale in-flight hover responses after mode changes or cursor movement. Known limitation: in-flight identical requests are not deduplicated, so rapid re-hover before the first response resolves can produce duplicate DeepL calls.
+- **Content script** (`src/content/index.ts`) — listens on `<all_urls>`. On `mouseover`, walks up the DOM until it finds the nearest block element (`BLOCK_SELECTOR`) containing text, debounces ~300ms, detects language via `/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/` (Japanese → `ja`→`en`, else `en`→`ja`), and translates with Chrome's built-in Translator API through `src/shared/browser-ai.ts`. Results render in a single floating `<div>` appended to `document.documentElement` with `z-index: 2147483647`. Translator sessions are cached per page and language direction, while `currentGeneration` invalidates stale in-flight hover responses after mode changes or cursor movement.
 
-- **Background service worker** (`src/background/service-worker.ts`) — receives `TRANSLATE`, `GET_USAGE`, and `TEST_KEY` messages and returns `true` for async `sendResponse` paths. `translator.ts` calls the official DeepL Free API at `https://api-free.deepl.com/v2/{translate,usage}` using the stored API key as a `DeepL-Auth-Key` authorization header. `deepl-client.ts` maps 403→`INVALID_KEY`, 456→`QUOTA_EXCEEDED`, 429→`RATE_LIMITED`, 5xx→`SERVER_ERROR`, and fetch failures→`NETWORK_ERROR`; `translator.ts` also keeps a best-effort service-worker LRU cache (`CACHE_MAX = 100`).
+- **Background service worker** (`src/background/service-worker.ts`) — initializes storage on cold start/install and routes the `translate-selection` command to the active tab as a `TRANSLATE_SELECTION` content-script message. It does not call translation providers.
 
-- **Popup** (`src/popup/`) — React 19 UI for DeepL API key setup, save/test actions, ON/OFF state, hover vs selection mode, selection trigger, request-size limits, quota display, and shortcut discovery. It reads/writes `chrome.storage.local[STORAGE_KEY]` and uses background `GET_USAGE` / `TEST_KEY` messages for DeepL checks; the content script picks up setting changes via `storage.onChanged`.
+- **Popup** (`src/popup/`) — React 19 UI for Chrome built-in Translator readiness, language-pack preparation, ON/OFF state, hover vs selection mode, selection trigger, request-size limits, and shortcut discovery. It reads/writes `chrome.storage.local[STORAGE_KEY]`; the content script picks up setting changes via `storage.onChanged`.
 
 **Storage initialization:** `ensureStorageInitialized` runs at service-worker cold start and on `runtime.onInstalled`. It is idempotent: existing local state is preserved, sync state is migrated to local once and then removed, and the intended end-state is one valid local `STORAGE_KEY` value with no sync `STORAGE_KEY`.
 
-**Shared contract:** `src/shared/messages.ts` defines `TranslateRequest`, `TranslateResponse`, `StorageState`, and the `STORAGE_KEY = "hoverTranslateState"` constant. All three runtimes must import from here — this file is the only cross-runtime coupling point.
+**Shared contract:** `src/shared/messages.ts` defines `StorageState`, `TranslateSelectionRequest`, error message helpers, and the `STORAGE_KEY = "hoverTranslateState"` constant. `src/shared/browser-ai.ts` wraps the Chrome built-in Translator API surface.
 
 **Manifest:** `src/manifest.ts` uses `@crxjs/vite-plugin`'s `defineManifest`. `name`/`description` are `__MSG_*__` keys resolved from `public/_locales/{en,ja}/messages.json`. Adding a new permission or content script match requires editing this file (not a static `manifest.json`).
 
@@ -42,11 +42,11 @@ Chrome MV3 extension that translates hovered text blocks between English and Jap
 
 ## Decisions
 
-- WeakMap memoization is not implemented in the content script; future work is in-flight request de-duplication, not per-element caching.
+- Translator sessions are cached per page and language direction in the content script; future work is in-flight request de-duplication.
 - Storage initialization should converge to `defaultState` or migrated sync state in local storage, remove sync state, and avoid double-writing local state.
 - Manifest shape is expected to be covered by `src/manifest.test.ts` from the manifest-test task; restore or add that file before relying on the claim in a branch where it is missing.
 - Vitest + jsdom is the default unit/integration layer. Playwright is planned separately for MV3 lifecycle, command routing, permissions, and real selection E2E.
-- Open questions: runtime validation of numeric DeepL usage fields, locale/store-listing key parity tests, and whether to add a manual DeepL contract check with a real key.
+- Open questions: real-browser MV3 coverage for the Chrome built-in Translator API and locale/store-listing key parity tests.
 
 ## Reference project
 

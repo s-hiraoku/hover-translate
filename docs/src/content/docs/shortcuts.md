@@ -13,11 +13,11 @@ The default shortcut is `Alt+Shift+T` on macOS, Windows, and Linux.
 
 - It translates the **current text selection** when the extension is enabled and Mode is set to **Selection** with the **Shortcut** trigger.
 - In Hover mode, or in Selection + Auto mode, the shortcut does nothing because those modes translate automatically.
-- Holding a translation over the same text reuses the in-memory cache when available.
+- Repeated selection translations reuse the page's Translator API session when available.
 
 To use the shortcut:
 
-1. Open the popup, save a DeepL API key, turn the extension on, and set Mode to **Selection** and Trigger to **Shortcut**.
+1. Open the popup, prepare language packs if prompted, turn the extension on, and set Mode to **Selection** and Trigger to **Shortcut**.
 2. On any supported page, highlight the text you want to translate.
 3. Press `Alt+Shift+T`. A tooltip appears next to the selection with the translation.
 

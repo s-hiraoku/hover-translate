@@ -8,23 +8,24 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 pnpm install
 pnpm dev      # Vite dev build with CRXJS hot reload → ./dist
 pnpm build    # tsc -b && vite build (production)
+pnpm test     # Vitest unit/integration suite
 pnpm preview
 pnpm zip      # build + zip dist for Chrome Web Store
 ```
 
-Load the unpacked extension from `dist/` via `chrome://extensions`. There is no test runner or linter configured yet.
+Load the unpacked extension from `dist/` via `chrome://extensions`. There is no linter configured yet.
 
 ## Architecture
 
-Chrome MV3 extension that translates hovered text blocks between English and Japanese. Three runtimes share state through `chrome.storage.local` and talk through `chrome.runtime.sendMessage`:
+Chrome MV3 extension that translates hovered text blocks between English and Japanese. Runtime settings are stored in `chrome.storage.local`; the selection shortcut is routed through `chrome.runtime.sendMessage`:
 
-- **Content script** (`src/content/index.ts`) — listens on `<all_urls>`. On `mouseover`, walks up the DOM until it finds the nearest block element (`BLOCK_SELECTOR`) containing text, debounces ~300ms, detects language via `/[\u3040-\u30ff\u4e00-\u9fff]/` (Japanese → `ja`→`en`, else `en`→`ja`), and sends a `TRANSLATE` message to the background. Results render in a single floating `<div>` appended to `document.documentElement` with `z-index: 2147483647`. Per-element results are memoized in a `WeakMap`. The script subscribes to `chrome.storage.onChanged` so toggling the popup immediately enables/disables hover behavior without a reload.
+- **Content script** (`src/content/index.ts`) — listens on `<all_urls>`. On `mouseover`, walks up the DOM until it finds the nearest block element (`BLOCK_SELECTOR`) containing text, debounces ~300ms, detects language via `/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/` (Japanese → `ja`→`en`, else `en`→`ja`), and translates with Chrome's built-in Translator API through `src/shared/browser-ai.ts`. Results render in a single floating `<div>` appended to `document.documentElement` with `z-index: 2147483647`. Translator sessions are cached per page and language direction. The script subscribes to `chrome.storage.onChanged` so toggling the popup immediately enables/disables hover behavior without a reload.
 
-- **Background service worker** (`src/background/service-worker.ts`) — receives `TranslateRequest` messages and delegates to `translator.ts`. The handler returns `true` to keep the `sendResponse` channel open for the async fetch. `translator.ts` calls the DeepL Free API via `deepl-client.ts`; users must provide their own DeepL API key in the popup before enabling translation.
+- **Background service worker** (`src/background/service-worker.ts`) — initializes storage on cold start/install and routes the `translate-selection` command to the active tab as a `TRANSLATE_SELECTION` content-script message. It does not call translation providers.
 
-- **Popup** (`src/popup/`) — React 19 UI for DeepL API key setup, ON/OFF state, hover/selection mode, quota display, and request limits. It reads/writes `chrome.storage.local[STORAGE_KEY]`. It does not talk to the content script directly for settings; the content script picks up changes via `storage.onChanged`.
+- **Popup** (`src/popup/`) — React 19 UI for Chrome built-in Translator readiness, language-pack preparation, ON/OFF state, hover/selection mode, selection trigger, and request limits. It reads/writes `chrome.storage.local[STORAGE_KEY]`; the content script picks up changes via `storage.onChanged`.
 
-**Shared contract:** `src/shared/messages.ts` defines `TranslateRequest`, `TranslateResponse`, `StorageState`, and the `STORAGE_KEY = "hoverTranslateState"` constant. All three runtimes must import from here — this file is the only cross-runtime coupling point.
+**Shared contract:** `src/shared/messages.ts` defines `StorageState`, `TranslateSelectionRequest`, error message helpers, and the `STORAGE_KEY = "hoverTranslateState"` constant. `src/shared/browser-ai.ts` wraps the Chrome built-in Translator API surface.
 
 **Manifest:** `src/manifest.ts` uses `@crxjs/vite-plugin`'s `defineManifest`. `name`/`description` are `__MSG_*__` keys resolved from `public/_locales/{en,ja}/messages.json`. Adding a new permission or content script match requires editing this file (not a static `manifest.json`).
 

@@ -15,10 +15,6 @@ describe("manifest shape", () => {
     expect(manifest.content_scripts?.some((script) => script.matches?.includes("<all_urls>"))).toBe(
       true,
     );
-    expect(manifest.host_permissions).toContain("https://api-free.deepl.com/*");
-  });
-
-  it.skip("declares the paid DeepL API host permission", () => {
-    expect(manifest.host_permissions).toContain("https://api.deepl.com/*");
+    expect(manifest.host_permissions).toEqual(["<all_urls>"]);
   });
 });

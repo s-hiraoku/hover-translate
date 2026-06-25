@@ -1,5 +1,5 @@
 import { expect, vi } from "vitest";
-import type { StorageState, TranslateResponse } from "../shared/messages";
+import type { StorageState } from "../shared/messages";
 import { STORAGE_KEY, defaultState } from "../shared/messages";
 import { installChromeMock } from "./chrome-mock";
 
@@ -12,7 +12,6 @@ const enabledHoverState: StorageState = {
   enabled: true,
   mode: "hover",
   selectionTrigger: "shortcut",
-  deeplApiKey: "k",
 };
 
 export function flushMicrotasks(): Promise<void> {
@@ -20,8 +19,9 @@ export function flushMicrotasks(): Promise<void> {
 }
 
 export async function flushAsyncWork(): Promise<void> {
-  await flushMicrotasks();
-  await flushMicrotasks();
+  for (let index = 0; index < 10; index += 1) {
+    await flushMicrotasks();
+  }
 }
 
 export function tooltip(): HTMLDivElement {
@@ -54,28 +54,47 @@ export async function finishDebouncedWork(): Promise<void> {
   await flushAsyncWork();
 }
 
-function stubSendMessage(response: TranslateResponse | Promise<TranslateResponse>) {
-  const sendMessage = vi.fn(async () => response);
-  (chrome.runtime as unknown as { sendMessage: typeof sendMessage }).sendMessage =
-    sendMessage;
-  return sendMessage;
+export interface TranslatorMockOptions {
+  availability?: "unavailable" | "downloadable" | "downloading" | "available";
+  translate?: string | ((text: string) => string | Promise<string>);
+  createError?: Error | DOMException;
+}
+
+export function installTranslatorMock(options: TranslatorMockOptions = {}) {
+  const translate = vi.fn(async (text: string) =>
+    typeof options.translate === "function"
+      ? options.translate(text)
+      : options.translate ?? "translated",
+  );
+  const translator = { translate, destroy: vi.fn() };
+  const availability = vi.fn(async () => options.availability ?? "available");
+  const create = vi.fn(async () => {
+    if (options.createError) throw options.createError;
+    return translator;
+  });
+  const Translator = function Translator() {
+    return translator;
+  };
+  Object.assign(Translator, { availability, create });
+  vi.stubGlobal("Translator", Translator);
+  return { Translator, availability, create, translate, translator };
 }
 
 export async function bootContentScript(
   state: Partial<StorageState> = {},
-  response: TranslateResponse = { ok: true, translated: "translated" },
+  translatorOptions: TranslatorMockOptions = {},
 ) {
   installChromeMock();
+  const translatorMock = installTranslatorMock(translatorOptions);
   const fullState: StorageState = {
     ...enabledHoverState,
     ...state,
   };
   await chrome.storage.local.set({ [STORAGE_KEY]: fullState });
-  const sendMessage = stubSendMessage(response);
 
   vi.resetModules();
   await import("../content/index");
   await flushAsyncWork();
 
-  return { sendMessage, state: fullState };
+  return { ...translatorMock, state: fullState };
 }

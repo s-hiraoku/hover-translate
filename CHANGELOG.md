@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Replace DeepL API translation with Chrome's built-in Translator API for local English ⇄ Japanese translation.
+- Remove API key setup, quota display, DeepL host permission, and background translation requests.
+- Add popup language-pack preparation for Chrome built-in translation.
+- Update README, docs site, store listing, locale description, and permission justifications for the built-in translation workflow.
+
 ## [1.2.1] - 2026-05-01
 
 ### Fixed

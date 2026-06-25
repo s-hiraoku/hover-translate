@@ -7,7 +7,7 @@ export default defineManifest({
   description: "__MSG_extDescription__",
   default_locale: "en",
   permissions: ["storage", "activeTab"],
-  host_permissions: ["<all_urls>", "https://api-free.deepl.com/*"],
+  host_permissions: ["<all_urls>"],
   background: {
     service_worker: "src/background/service-worker.ts",
     type: "module" as const,
