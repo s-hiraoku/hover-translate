@@ -1,33 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installChromeMock } from "../test/chrome-mock";
 import type { ChromeMock } from "../test/chrome-mock";
-import type {
-  DeepLUsage,
-  GetUsageRequest,
-  StorageState,
-  TestKeyRequest,
-  TranslateRequest,
-} from "../shared/messages";
+import type { StorageState } from "../shared/messages";
 import { STORAGE_KEY, defaultState } from "../shared/messages";
-import { DeepLError } from "./deepl-client";
-
-const { fetchUsage, translate } = vi.hoisted(() => ({
-  fetchUsage: vi.fn<() => Promise<DeepLUsage>>(),
-  translate: vi.fn<() => Promise<string>>(),
-}));
-
-vi.mock("./translator", () => ({
-  translate,
-  fetchUsage,
-}));
 
 async function importServiceWorker(): Promise<ChromeMock> {
   vi.resetModules();
   const chromeMock = installChromeMock();
-  translate.mockReset();
-  fetchUsage.mockReset();
-  translate.mockResolvedValue("translated");
-  fetchUsage.mockResolvedValue({ character_count: 100, character_limit: 500000 });
   await import("./service-worker");
   await flushAsyncWork();
   return chromeMock;
@@ -64,41 +43,39 @@ describe("storage initialization", () => {
 
   it("keeps existing local state on install", async () => {
     const chromeMock = await importServiceWorker();
-    seed(chromeMock.storage.local, { enabled: true, deeplApiKey: "local-key" });
+    seed(chromeMock.storage.local, { enabled: true });
 
     await chromeMock.runtime.onInstalled._emit();
     await flushAsyncWork();
 
     await expect(readLocalState()).resolves.toMatchObject({
       enabled: true,
-      deeplApiKey: "local-key",
     });
   });
 
   it("migrates sync state to local on install", async () => {
     const chromeMock = await importServiceWorker();
     await chromeMock.storage.local.clear();
-    seed(chromeMock.storage.sync, { enabled: true, deeplApiKey: "sync-key" });
+    seed(chromeMock.storage.sync, { enabled: true });
 
     await chromeMock.runtime.onInstalled._emit();
     await flushAsyncWork();
 
     await expect(readLocalState()).resolves.toMatchObject({
       enabled: true,
-      deeplApiKey: "sync-key",
     });
     expect(chromeMock.storage.sync._dump()[STORAGE_KEY]).toBeUndefined();
   });
 
   it("keeps local state and removes sync state when both exist on install", async () => {
     const chromeMock = await importServiceWorker();
-    seed(chromeMock.storage.local, { deeplApiKey: "local-key" });
-    seed(chromeMock.storage.sync, { deeplApiKey: "sync-key" });
+    seed(chromeMock.storage.local, { enabled: true });
+    seed(chromeMock.storage.sync, { enabled: false });
 
     await chromeMock.runtime.onInstalled._emit();
     await flushAsyncWork();
 
-    await expect(readLocalState()).resolves.toMatchObject({ deeplApiKey: "local-key" });
+    await expect(readLocalState()).resolves.toMatchObject({ enabled: true });
     expect(chromeMock.storage.sync._dump()[STORAGE_KEY]).toBeUndefined();
   });
 
@@ -106,81 +83,6 @@ describe("storage initialization", () => {
     await importServiceWorker();
 
     await expect(readLocalState()).resolves.toEqual(defaultState);
-  });
-});
-
-describe("runtime messages", () => {
-  it("responds to TRANSLATE success", async () => {
-    const chromeMock = await importServiceWorker();
-    translate.mockResolvedValue("こんにちは");
-
-    await expect(
-      chromeMock.runtime.sendMessage({
-        type: "TRANSLATE",
-        text: "hello",
-        source: "en",
-        target: "ja",
-      } satisfies TranslateRequest),
-    ).resolves.toEqual({ ok: true, translated: "こんにちは" });
-  });
-
-  it("responds to TRANSLATE failure", async () => {
-    const chromeMock = await importServiceWorker();
-    translate.mockRejectedValue(new DeepLError("INVALID_KEY", "bad"));
-
-    await expect(
-      chromeMock.runtime.sendMessage({
-        type: "TRANSLATE",
-        text: "hello",
-        source: "en",
-        target: "ja",
-      } satisfies TranslateRequest),
-    ).resolves.toEqual({
-      ok: false,
-      errorCode: "INVALID_KEY",
-      error: "Invalid DeepL API key. Check the key in the popup.",
-    });
-  });
-
-  it("responds to TEST_KEY success with object override", async () => {
-    const chromeMock = await importServiceWorker();
-    const usage = { character_count: 100, character_limit: 500000 };
-    fetchUsage.mockResolvedValue(usage);
-
-    await expect(
-      chromeMock.runtime.sendMessage({ type: "TEST_KEY", key: "abc" } satisfies TestKeyRequest),
-    ).resolves.toEqual({ ok: true, usage });
-    expect(fetchUsage).toHaveBeenCalledWith({ key: "abc" });
-  });
-
-  it("responds to TEST_KEY failure", async () => {
-    const chromeMock = await importServiceWorker();
-    fetchUsage.mockRejectedValue(new DeepLError("QUOTA_EXCEEDED", "quota"));
-
-    await expect(
-      chromeMock.runtime.sendMessage({ type: "TEST_KEY", key: "abc" } satisfies TestKeyRequest),
-    ).resolves.toEqual({
-      ok: false,
-      errorCode: "QUOTA_EXCEEDED",
-      error: "DeepL free quota exceeded this period.",
-    });
-  });
-
-  it("responds to GET_USAGE by calling fetchUsage without arguments", async () => {
-    const chromeMock = await importServiceWorker();
-    const usage = { character_count: 100, character_limit: 500000 };
-    fetchUsage.mockResolvedValue(usage);
-
-    await expect(
-      chromeMock.runtime.sendMessage({ type: "GET_USAGE" } satisfies GetUsageRequest),
-    ).resolves.toEqual({ ok: true, usage });
-    expect(fetchUsage).toHaveBeenCalledWith();
-  });
-
-  it("returns undefined for unknown message types", async () => {
-    const chromeMock = await importServiceWorker();
-
-    await expect(chromeMock.runtime.sendMessage({ type: "UNKNOWN" })).resolves.toBeUndefined();
   });
 });
 

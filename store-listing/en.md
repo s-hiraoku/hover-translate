@@ -4,52 +4,42 @@
 Hover Translate: English ⇄ Japanese
 
 ## Short description (132 chars max)
-Hover over English or Japanese paragraphs to translate them with your own DeepL Free API key.
+Hover English or Japanese paragraphs to translate locally with Chrome built-in translation.
 
 ## Detailed description (16,000 chars max)
 ## Why Hover Translate?
 
-Hover Translate is a Chrome extension for reading English and Japanese webpages with less interruption. Instead of copying text into another app or opening a full-page translator, you can hover over a paragraph and read the translated result in a tooltip next to the original content.
+Hover Translate is a Chrome extension for reading English and Japanese webpages with less interruption. Instead of copying text into another app or opening a full-page translator, hover over a paragraph and read the translated result in a tooltip next to the original content.
 
-The extension is intentionally narrow in scope. It translates paragraph-level text between English and Japanese only, uses the user's own DeepL Free API key, and keeps the interface small: a popup for setup and limits, a floating tooltip for results, and one keyboard shortcut for quick ON/OFF control.
-
-This extension is designed for people who read documentation, articles, blogs, or bilingual reference material and want a lightweight translation tool that stays out of the way.
+The extension is intentionally narrow in scope. It translates paragraph-level text between English and Japanese only, uses Chrome's built-in on-device Translator API, and keeps the interface small: a popup for engine readiness, mode selection, limits, a floating tooltip for results, and one keyboard shortcut for selected text.
 
 ## Features
 
 - Hover over a paragraph, list item, heading, table cell, or similar block element to translate it in place
+- Translate selected text by shortcut or automatically on mouse release
 - Automatically detects English or Japanese and chooses the translation direction
-- Uses DeepL Free for translation quality
+- Uses Chrome built-in translation, with no DeepL or cloud translation API key
 - Shows results in a floating tooltip after a 300 ms hover delay
 - Displays translation errors in a visually distinct tooltip with a red border
-- Includes a popup with four sections: Setup, Translate, Quota, and Limits
-- Shows current DeepL usage in the popup, including warning and danger states
 - Lets you customize the maximum characters per request from 500 to 5000
-- Avoids repeated translation of the same text with an in-memory 100-entry LRU cache
-- Supports a global keyboard shortcut to toggle translation on and off
+- Reuses Translator API sessions for the page while it is loaded
 
 ## How it works
 
-1. Open the extension popup and save your DeepL Free API key.
+1. Open the extension popup and prepare language packs if Chrome asks.
 2. Turn translation on in the popup.
 3. Visit any webpage with English or Japanese text.
-4. Hover over a paragraph-sized text block and read the translated result in the tooltip.
-
-## Your own DeepL Free API key required
-
-Hover Translate does not ship with a shared translation account. You must create your own DeepL API Free account and paste your own API key into the extension popup before translation will work.
-
-DeepL API Free currently includes up to 500,000 characters per month at no cost. The extension also includes a quota display and a configurable character limit so you can manage usage directly from the popup.
+4. Hover over a paragraph-sized text block or translate selected text.
 
 ## Privacy
 
-Hovered text is sent only to the DeepL Free API for translation. No analytics, tracking, crash reporting, or unrelated telemetry is included.
+Hovered and selected text is handled by Chrome's built-in Translator API. Hover Translate does not send text to a project server and does not store a translation API key.
 
-Your DeepL API key is stored locally in `chrome.storage.local`. The extension does not send your key anywhere except DeepL when making authenticated API requests on your behalf.
+No analytics, tracking, crash reporting, or unrelated telemetry is included.
 
 ## Keyboard shortcut
 
-The default shortcut is `Alt+Shift+T`. It toggles translation ON/OFF from the current tab and shows a small status toast. You can change the shortcut from Chrome's extension shortcut settings.
+The default shortcut is `Alt+Shift+T`. It translates the current text selection when Selection mode is set to Shortcut. You can change the shortcut from Chrome's extension shortcut settings.
 
 ## Documentation
 

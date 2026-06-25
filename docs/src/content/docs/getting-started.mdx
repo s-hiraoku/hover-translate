@@ -1,63 +1,54 @@
 ---
 title: Getting Started
-description: Install the extension and connect your DeepL API key.
+description: Install the extension and prepare Chrome built-in translation.
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 import { Image } from "astro:assets";
-import popupSetup from "../../assets/screenshots/popup-setup.png";
 import popupActive from "../../assets/screenshots/popup-active.png";
 
 # Getting Started
 
-This guide will walk you through installing Hover Translate, getting a free DeepL API key, and verifying the extension works.
+This guide walks you through installing Hover Translate and preparing Chrome's built-in English ⇄ Japanese translation.
 
-## 1. Install the extension
+## 1. Check browser support
+
+Hover Translate uses the Chrome built-in Translator API.
+
+- Use desktop Chrome 138 or later.
+- Mobile Chrome, Firefox, and Safari are not supported.
+- Chrome may need to download language packs the first time you use the extension.
+
+<Aside type="note" title="No translation account required">
+  Hover Translate no longer uses DeepL or any external translation API. There is
+  no API key, quota, or billing setup.
+</Aside>
+
+## 2. Install the extension
 
 1. Open the [Hover Translate listing on the Chrome Web Store](https://chromewebstore.google.com/detail/hover-translate-%E8%8B%B1%E8%AA%9E-%E2%87%84-%E6%97%A5%E6%9C%AC%E8%AA%9E/opjkabnjpglbkdlkanjkpkcohmdcajmp).
 2. Click **Add to Chrome**, then confirm in the dialog.
 3. The Hover Translate icon appears in the Chrome toolbar when installation finishes.
 
 <Aside type="note" title="Developer install (optional)">
-  If you prefer to run the extension from source — to try unreleased changes or
-  contribute — clone the [repository](https://github.com/s-hiraoku/hover-translate),
-  run `pnpm install` and `pnpm build`, then load the generated `dist/` directory
-  via `chrome://extensions/` → **Developer mode** → **Load unpacked**.
+  To run from source, clone the [repository](https://github.com/s-hiraoku/hover-translate),
+  run `pnpm install` and `pnpm build`, then load `dist/` via
+  `chrome://extensions/` → **Developer mode** → **Load unpacked**.
 </Aside>
 
-## 2. Get a free DeepL API key
-
-1. Visit [DeepL API plans](https://www.deepl.com/pro-api).
-2. Sign up for the **DeepL API Free** plan.
-3. After signup, open your DeepL account settings.
-4. Locate the **API Keys** section and copy your key.
-
-> Note: DeepL Free requires a credit card for verification, but usage under 500,000 characters per month is not billed.
-
-<Aside type="tip" title="About the DeepL Free quota">
-  DeepL Free gives you up to 500,000 characters per month at no cost. The quota
-  resets automatically at the start of each billing period, based on your signup
-  date anniversary. No payment is needed. If you hit the limit, just wait until
-  the next cycle and the extension resumes working. You can check your current
-  usage and next reset date at [deepl.com/account/usage](https://www.deepl.com/account/usage).
-</Aside>
-
-## 3. Connect your key
+## 3. Prepare language packs
 
 1. Click the Hover Translate extension icon to open the popup.
-2. In the **Setup** section, paste the key into **DeepL API Key**.
-3. Click **Save**.
-4. Click **Test**.
-5. Confirm that the popup shows `Connection verified.`
-
-<Image src={popupSetup} alt="Popup setup screen with API key required banner" width={340} />
+2. In **Engine**, click **Prepare** if the popup asks you to prepare language packs.
+3. Keep Chrome open while the English and Japanese language packs download.
+4. Confirm the popup shows `Ready for English ⇄ Japanese`.
 
 ## 4. Turn it on and pick a mode
 
-1. In the **Translate** section, switch the extension to **ON**.
+1. In **Translate**, switch the extension to **ON**.
 2. Choose a mode:
-   - **Hover** — translate the nearest paragraph automatically when you hover over it.
-   - **Selection** — translate only the text you highlight. When Selection is active, a second switch appears to choose between **Shortcut** (`Alt+Shift+T`) and **Auto** (translate on mouse release).
+   - **Hover** translates the nearest paragraph automatically when you hover over it.
+   - **Selection** translates only highlighted text. Selection mode can use **Shortcut** (`Alt+Shift+T`) or **Auto** on mouse release.
 3. Open any normal web page with English or Japanese text and try your chosen mode.
 4. A translation tooltip appears next to the source text.
 

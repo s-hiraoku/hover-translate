@@ -1,62 +1,56 @@
 ---
 title: はじめに
-description: 拡張機能をインストールし、DeepL API キーを接続します。
+description: 拡張機能をインストールし、Chrome built-in 翻訳を準備します。
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 import { Image } from "astro:assets";
-import popupSetup from "../../../assets/screenshots/popup-setup.png";
 import popupActive from "../../../assets/screenshots/popup-active.png";
 
 # はじめに
 
-このガイドでは、Hover Translate のインストール、無料の DeepL API キーの取得、拡張機能が正しく動作することの確認までを説明します。
+このガイドでは、Hover Translate のインストールと Chrome built-in Translator API の準備手順を説明します。
 
-## 1. 拡張機能をインストールする
+## 1. 対応環境を確認する
 
-1. [Chrome ウェブストアの Hover Translate ページ](https://chromewebstore.google.com/detail/hover-translate-%E8%8B%B1%E8%AA%9E-%E2%87%84-%E6%97%A5%E6%9C%AC%E8%AA%9E/opjkabnjpglbkdlkanjkpkcohmdcajmp?hl=ja) を開きます。
-2. **Chrome に追加** をクリックし、確認ダイアログで承認します。
-3. インストールが完了すると、Chrome のツールバーに Hover Translate のアイコンが表示されます。
+Hover Translate は Chrome built-in Translator API を使います。
 
-<Aside type="note" title="開発者向けインストール (任意)">
-  最新の未リリース変更を試したい、あるいは開発に参加したい場合は、[リポジトリ](https://github.com/s-hiraoku/hover-translate) をクローンし、`pnpm install` と `pnpm build` を実行してから、`chrome://extensions/` の **デベロッパーモード** を有効にして **パッケージ化されていない拡張機能を読み込む** で生成された `dist/` ディレクトリを指定してください。
+- デスクトップ版 Chrome 138 以降が必要です。
+- モバイル Chrome、Firefox、Safari には対応していません。
+- 初回利用時に Chrome が英語・日本語の言語パックをダウンロードする場合があります。
+
+<Aside type="note" title="翻訳アカウントは不要です">
+  Hover Translate は DeepL などの外部翻訳 API を使いません。API キー、クォータ、課金設定は不要です。
 </Aside>
 
-## 2. 無料の DeepL API キーを取得する
+## 2. 拡張機能をインストールする
 
-1. [DeepL API plans](https://www.deepl.com/pro-api) にアクセスします。
-2. **DeepL API Free** プランに登録します。
-3. 登録後、DeepL のアカウント設定を開きます。
-4. **API Keys** セクションで API キーを確認し、コピーします。
+1. [Chrome Web Store の Hover Translate ページ](https://chromewebstore.google.com/detail/hover-translate-%E8%8B%B1%E8%AA%9E-%E2%87%84-%E6%97%A5%E6%9C%AC%E8%AA%9E/opjkabnjpglbkdlkanjkpkcohmdcajmp) を開きます。
+2. **Chrome に追加** をクリックし、確認ダイアログを承認します。
+3. インストールが完了すると Chrome のツールバーに Hover Translate のアイコンが表示されます。
 
-> 注記: DeepL Free は本人確認のためにクレジットカード登録を求めますが、月 500,000 文字までの利用であれば課金されません。
-
-<Aside type="tip" title="DeepL Free のクォータについて">
-  DeepL Free では、月あたり最大 500,000 文字まで無料で利用できます。クォータは課金なしで
-  毎月自動的にリセットされ、特別な操作は不要です。上限に達した場合も、次のサイクルまで待てば
-  再び利用できます。現在の使用量と次のリセット日は
-  [deepl.com/account/usage](https://www.deepl.com/account/usage) で確認できます。
+<Aside type="note" title="開発者向けインストール">
+  ソースから動かす場合は [repository](https://github.com/s-hiraoku/hover-translate)
+  を clone し、`pnpm install` と `pnpm build` を実行してから、`chrome://extensions/`
+  の **デベロッパー モード** → **パッケージ化されていない拡張機能を読み込む** で `dist/` を読み込みます。
 </Aside>
 
-## 3. API キーを接続する
+## 3. 言語パックを準備する
 
-1. Hover Translate の拡張機能アイコンをクリックし、ポップアップを開きます。
-2. **Setup** セクションの **DeepL API Key** にキーを貼り付けます。
-3. **Save** をクリックします。
-4. **Test** をクリックします。
-5. ポップアップに `Connection verified.` と表示されれば接続成功です。
+1. Hover Translate のアイコンをクリックしてポップアップを開きます。
+2. **Engine** に準備が必要と表示された場合は **Prepare** を押します。
+3. 英語・日本語の言語パックのダウンロードが終わるまで Chrome を開いたまま待ちます。
+4. `Ready for English ⇄ Japanese` と表示されれば準備完了です。
 
-<Image src={popupSetup} alt="API key required バナーが表示されたポップアップ設定画面" width={340} />
+## 4. ON にしてモードを選ぶ
 
-## 4. 有効化してモードを選ぶ
-
-1. **Translate** セクションで拡張機能を **ON** に切り替えます。
+1. **Translate** セクションで拡張機能を ON にします。
 2. モードを選びます。
-   - **Hover** — ブロックにホバーすると最寄りの段落を自動翻訳します。
-   - **Selection** — 選択した範囲だけを翻訳します。Selection を選ぶと追加のスイッチが表示され、**Shortcut** (`Alt+Shift+T`) と **Auto** (マウス離し検知) を選べます。
-3. 英文または日本語文を含む通常の Web ページを開き、選んだモードを試します。
-4. 対象テキストの近くに翻訳ツールチップが表示されます。
+   - **Hover**: 段落にホバーすると自動で翻訳します。
+   - **Selection**: 選択したテキストだけを翻訳します。**Shortcut** (`Alt+Shift+T`) または **Auto** を選べます。
+3. 英語または日本語のある通常の Web ページで試します。
+4. 翻訳結果が元テキスト付近のツールチップに表示されます。
 
-<Image src={popupActive} alt="Selection モード + Shortcut トリガーが有効なポップアップ画面" width={340} />
+<Image src={popupActive} alt="Selection mode と Shortcut trigger が選択されたポップアップ" width={340} />
 
-ツールチップが表示されない場合やポップアップにエラーが出る場合は、[トラブルシューティング](/hover-translate/ja/troubleshooting/) を参照してください。
+表示されない場合は [トラブルシューティング](/hover-translate/ja/troubleshooting/) を確認してください。

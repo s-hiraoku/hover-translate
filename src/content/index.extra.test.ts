@@ -13,7 +13,6 @@ import {
   defaultState,
   messageForCode,
 } from "../shared/messages";
-import type { TranslateResponse } from "../shared/messages";
 
 const COPIED_STATE_DURATION_MS = 1200;
 
@@ -133,7 +132,7 @@ describe("extra content tooltip lifecycle coverage", () => {
 
 describe("extra content copy button coverage", () => {
   it("copies translated text, shows the copied icon, then reverts", async () => {
-    await bootContentScript({}, { ok: true, translated: "copy me" });
+    await bootContentScript({}, { translate: "copy me" });
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -162,7 +161,7 @@ describe("extra content copy button coverage", () => {
   });
 
   it("keeps the tooltip visible after clicking the copy button", async () => {
-    await bootContentScript({}, { ok: true, translated: "still visible" });
+    await bootContentScript({}, { translate: "still visible" });
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -178,7 +177,7 @@ describe("extra content copy button coverage", () => {
   });
 
   it("does not get stuck in copied state when clipboard write rejects and fallback fails", async () => {
-    await bootContentScript({}, { ok: true, translated: "reject me" });
+    await bootContentScript({}, { translate: "reject me" });
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
@@ -205,12 +204,19 @@ describe("extra content copy button coverage", () => {
 
 describe("extra content error rendering coverage", () => {
   it.each([
-    "INVALID_KEY",
-    "RATE_LIMITED",
-    "QUOTA_EXCEEDED",
-    "NETWORK_ERROR",
+    "LANGUAGE_PACK_UNAVAILABLE",
+    "LANGUAGE_PACK_DOWNLOAD_REQUIRED",
+    "UNKNOWN",
   ] as const)("renders %s as an error tooltip", async (errorCode) => {
-    await bootContentScript({}, { ok: false, errorCode });
+    if (errorCode === "LANGUAGE_PACK_UNAVAILABLE") {
+      await bootContentScript({}, { availability: "unavailable" });
+    } else if (errorCode === "LANGUAGE_PACK_DOWNLOAD_REQUIRED") {
+      await bootContentScript({}, {
+        createError: new DOMException("activation required", "NotAllowedError"),
+      });
+    } else {
+      await bootContentScript({}, { createError: new Error("boom") });
+    }
     const paragraph = appendParagraph(`Hello ${errorCode}.`);
 
     mouseover(paragraph);
@@ -225,32 +231,29 @@ describe("extra content error rendering coverage", () => {
 
 describe("extra content re-translation and stale response coverage", () => {
   it("does not let an older response overwrite a newer active block", async () => {
-    let resolveFirst: ((response: TranslateResponse) => void) | undefined;
-    const firstResponse = new Promise<TranslateResponse>((resolve) => {
+    let resolveFirst: ((response: string) => void) | undefined;
+    const firstResponse = new Promise<string>((resolve) => {
       resolveFirst = resolve;
     });
-    const sendMessage = vi
-      .fn()
+    const { translate } = await bootContentScript();
+    translate
       .mockReturnValueOnce(firstResponse)
-      .mockResolvedValueOnce({ ok: true, translated: "second translation" });
-    await bootContentScript();
-    (chrome.runtime as unknown as { sendMessage: typeof sendMessage }).sendMessage =
-      sendMessage;
+      .mockResolvedValueOnce("second translation");
     const first = appendParagraph("First pending text.");
     const second = appendParagraph("Second fast text.");
 
     mouseover(first);
     await finishDebouncedWork();
-    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(translate).toHaveBeenCalledTimes(1);
     expect(tooltip().textContent).toContain("…");
 
     mouseover(second);
     await finishDebouncedWork();
-    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(translate).toHaveBeenCalledTimes(2);
     expect(tooltip().textContent).toContain("second translation");
 
     expect(resolveFirst).toBeDefined();
-    resolveFirst?.({ ok: true, translated: "stale first translation" });
+    resolveFirst?.("stale first translation");
     await flushAsyncWork();
 
     expect(tooltip().textContent).toContain("second translation");
@@ -293,7 +296,7 @@ describe("extra content shortcut selection coverage", () => {
   }
 
   it("translates the current selection when the shortcut message is received", async () => {
-    const { sendMessage } = await bootContentScript({
+    const { translate } = await bootContentScript({
       mode: "selection",
       selectionTrigger: "shortcut",
     });
@@ -306,18 +309,11 @@ describe("extra content shortcut selection coverage", () => {
     )._emit({ type: "TRANSLATE_SELECTION" });
     await flushAsyncWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "TRANSLATE",
-        text: "Selected shortcut text",
-        source: "en",
-        target: "ja",
-      }),
-    );
+    expect(translate).toHaveBeenCalledWith("Selected shortcut text");
   });
 
   it("preserves block boundaries when selected text crosses structured content", async () => {
-    const { sendMessage } = await bootContentScript({
+    const { translate } = await bootContentScript({
       mode: "selection",
       selectionTrigger: "shortcut",
     });
@@ -343,16 +339,13 @@ describe("extra content shortcut selection coverage", () => {
     )._emit({ type: "TRANSLATE_SELECTION" });
     await flushAsyncWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "TRANSLATE",
-        text: "What’s changed\n\nWorktrees are now driven by two explicit commands: /worktree and /best-of-n.\n\n/worktree starts an isolated Git checkout for the rest of a chat.",
-      }),
+    expect(translate).toHaveBeenCalledWith(
+      "What’s changed\n\nWorktrees are now driven by two explicit commands: /worktree and /best-of-n.\n\n/worktree starts an isolated Git checkout for the rest of a chat.",
     );
   });
 
   it("does not translate an empty shortcut selection", async () => {
-    const { sendMessage } = await bootContentScript({
+    const { translate } = await bootContentScript({
       mode: "selection",
       selectionTrigger: "shortcut",
     });
@@ -365,38 +358,7 @@ describe("extra content shortcut selection coverage", () => {
     )._emit({ type: "TRANSLATE_SELECTION" });
     await flushAsyncWork();
 
-    expect(sendMessage).not.toHaveBeenCalled();
-  });
-});
-
-describe("extra content context coverage", () => {
-  it("includes truncated previous and next sibling text in the translation context", async () => {
-    const { sendMessage } = await bootContentScript();
-    const previous = appendParagraph(`${"a".repeat(520)} previous tail`);
-    const current = appendParagraph("Middle text.");
-    const next = appendParagraph(`next head ${"c".repeat(520)}`);
-
-    mouseover(current);
-    await finishDebouncedWork();
-
-    const request = sendMessage.mock.calls[0]?.[0] as { context?: string };
-    expect(request.context).toBeDefined();
-    expect(request.context).toContain(previous.textContent?.slice(-500));
-    expect(request.context).toContain(next.textContent?.slice(0, 500));
-    expect(request.context).not.toContain("a".repeat(520));
-    expect(request.context).not.toContain("c".repeat(520));
-  });
-
-  it("omits context for an isolated block", async () => {
-    const { sendMessage } = await bootContentScript();
-    const paragraph = appendParagraph("Only block text.");
-
-    mouseover(paragraph);
-    await finishDebouncedWork();
-
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ context: undefined }),
-    );
+    expect(translate).not.toHaveBeenCalled();
   });
 });
 
@@ -406,19 +368,17 @@ describe("extra content block selector coverage", () => {
     ["li", "List item text."],
     ["h2", "Heading text."],
   ] as const)("translates hovered <%s> blocks", async (tagName, text) => {
-    const { sendMessage } = await bootContentScript();
+    const { translate } = await bootContentScript();
     const block = appendTextBlock(tagName, text);
 
     mouseover(block);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ text }),
-    );
+    expect(translate).toHaveBeenCalledWith(text);
   });
 
   it('treats [role="paragraph"] as a text block', async () => {
-    const { sendMessage } = await bootContentScript();
+    const { translate } = await bootContentScript();
     const block = document.createElement("div");
     block.setAttribute("role", "paragraph");
     block.textContent = "Role paragraph text.";
@@ -427,15 +387,13 @@ describe("extra content block selector coverage", () => {
     mouseover(block);
     await finishDebouncedWork();
 
-    expect(sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "Role paragraph text." }),
-    );
+    expect(translate).toHaveBeenCalledWith("Role paragraph text.");
   });
 });
 
 describe("extra content live storage update coverage", () => {
   it("stops hover translation after mode changes to selection", async () => {
-    const { sendMessage, state } = await bootContentScript({ mode: "hover" });
+    const { translate, state } = await bootContentScript({ mode: "hover" });
     await chrome.storage.local.set({
       [STORAGE_KEY]: { ...state, mode: "selection" },
     });
@@ -445,11 +403,11 @@ describe("extra content live storage update coverage", () => {
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(translate).not.toHaveBeenCalled();
   });
 
   it("stops hover translation after enabled changes to false", async () => {
-    const { sendMessage, state } = await bootContentScript({ enabled: true });
+    const { translate, state } = await bootContentScript({ enabled: true });
     await chrome.storage.local.set({
       [STORAGE_KEY]: { ...state, enabled: false },
     });
@@ -459,6 +417,6 @@ describe("extra content live storage update coverage", () => {
     mouseover(paragraph);
     await finishDebouncedWork();
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(translate).not.toHaveBeenCalled();
   });
 });

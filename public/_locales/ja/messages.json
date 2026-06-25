@@ -3,6 +3,6 @@
     "message": "Hover Translate: 英語 ⇄ 日本語"
   },
   "extDescription": {
-    "message": "段落にホバーするだけで英語と日本語を相互翻訳します。DeepL Free API を使用。"
+    "message": "段落にホバーするだけで英語と日本語を相互翻訳します。Chrome built-in 翻訳を使用。"
   }
 }

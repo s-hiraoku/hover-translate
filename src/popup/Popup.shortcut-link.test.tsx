@@ -3,20 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import manifest from "../manifest";
 import { STORAGE_KEY, defaultState } from "../shared/messages";
-import type { GetUsageResponse, StorageState, TestKeyResponse } from "../shared/messages";
+import type { StorageState } from "../shared/messages";
 import { installChromeMock } from "../test/chrome-mock";
-
-type RuntimeMessage =
-  | { type: "GET_USAGE" }
-  | { type: "TEST_KEY"; key: string }
-  | { type: string; key?: string };
+import { installTranslatorMock } from "../test/boot-content-script";
 
 const requiredShortcutState: StorageState = {
   ...defaultState,
   enabled: true,
   mode: "selection",
   selectionTrigger: "shortcut",
-  deeplApiKey: "saved-key",
 };
 
 function stubCommands(shortcut = "Alt+Shift+T") {
@@ -39,35 +34,18 @@ function stubCommands(shortcut = "Alt+Shift+T") {
   return { create, getAll };
 }
 
-function stubSendMessage() {
-  return vi.spyOn(chrome.runtime, "sendMessage").mockImplementation(async (message: unknown) => {
-    const typed = message as RuntimeMessage;
-    if (typed.type === "GET_USAGE") {
-      return {
-        ok: true,
-        usage: { character_count: 10, character_limit: 100 },
-      } satisfies GetUsageResponse;
-    }
-    return undefined satisfies TestKeyResponse | undefined;
-  });
-}
-
 async function renderPopup(initialState: Partial<StorageState>) {
   installChromeMock();
+  installTranslatorMock();
   await chrome.storage.local.set({
     [STORAGE_KEY]: { ...defaultState, ...initialState },
   });
   const commandStubs = stubCommands();
-  stubSendMessage();
 
   vi.resetModules();
   const { Popup } = await import("./Popup");
   render(<Popup />);
-  await waitFor(() =>
-    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(
-      false,
-    ),
-  );
+  await waitFor(() => expect(screen.getByText("Ready for English ⇄ Japanese")).toBeTruthy());
 
   return {
     ...commandStubs,
@@ -77,6 +55,7 @@ async function renderPopup(initialState: Partial<StorageState>) {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 

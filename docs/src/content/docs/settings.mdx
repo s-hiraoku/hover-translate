@@ -5,76 +5,56 @@ description: Review the extension settings and configuration options.
 
 import { Image } from "astro:assets";
 import popupActive from "../../assets/screenshots/popup-active.png";
-import popupQuotaDanger from "../../assets/screenshots/popup-quota-danger.png";
 
 # Settings
 
-The popup UI is divided into four sections: **Setup**, **Translate**, **Quota**, and **Limits**. All settings are stored in `chrome.storage.local` under the `hoverTranslateState` key and remain available after you restart the browser.
+The popup UI is divided into three sections: **Engine**, **Translate**, and **Limits**. Settings are stored in `chrome.storage.local` under the `hoverTranslateState` key.
 
-## Setup
+## Engine
 
-The **Setup** section handles your DeepL credentials.
+The **Engine** section reports Chrome built-in Translator API readiness.
 
-- **DeepL API Key** is a password-style input field.
-- **Save** writes the current key to `chrome.storage.local`.
-- **Test** calls DeepL's `/v2/usage` endpoint to confirm that the key is valid and that quota data can be read.
-- If no key is stored yet, the popup shows an **API key required** banner.
-- Connection test errors are displayed directly in the popup so you can correct the key without opening Developer Tools.
+- **Ready for English ⇄ Japanese** means Chrome already has the required language packs.
+- **Prepare language packs before first use** means Chrome can download the packs, but the download must start from a user click.
+- **Prepare** starts the English → Japanese and Japanese → English language pack setup.
+- **Chrome 138+ desktop required** means the browser does not expose the Translator API.
 
 ## Translate
 
-The **Translate** section is the main control surface. It has four controls.
+The **Translate** section is the main control surface.
 
 ### ON/OFF toggle
 
-The coral pill toggle enables or disables the extension globally. When off, Hover Translate does nothing regardless of mode. The toggle is disabled until a DeepL API key is saved.
+The coral pill toggle enables or disables the extension globally. When off, Hover Translate does nothing regardless of mode.
 
 ### Mode switch
 
-Choose between two modes:
-
-- **Hover** — translate the nearest paragraph when the cursor hovers on it (after a 300 ms debounce).
-- **Selection** — translate only the text you explicitly select.
+- **Hover** translates the nearest paragraph after a 300 ms debounce.
+- **Selection** translates only the text you explicitly select.
 
 Switching modes applies immediately and discards any in-flight translation from the previous mode.
 
-### Trigger switch (Selection mode only)
+### Trigger switch
 
-When Mode is **Selection**, a second switch appears to choose how the translation fires:
+When Mode is **Selection**, choose how translation fires:
 
-- **Shortcut** — press `Alt+Shift+T` while text is selected. Nothing happens until you press the shortcut.
-- **Auto** — translate automatically 300 ms after you release the mouse, as long as a selection exists.
+- **Shortcut**: press `Alt+Shift+T` while text is selected.
+- **Auto**: translate automatically 300 ms after mouse release.
 
 ### Shortcut row
 
-The current shortcut binding (defaults to `⌥⇧T`) is shown only in **Selection + Shortcut** mode, since that is the only mode that uses the shortcut. The **Change** link opens `chrome://extensions/shortcuts` so you can pick a different key combination.
+The current shortcut binding is shown only in **Selection + Shortcut** mode. The **Change** link opens `chrome://extensions/shortcuts`.
 
 <Image src={popupActive} alt="Popup Translate section in Selection + Shortcut mode" width={340} />
 
-## Quota
-
-The **Quota** section shows how much of the DeepL Free allowance has been used.
-
-- Usage is rendered as a progress bar.
-- The popup caches the value for 30 seconds to avoid redundant calls.
-- **Refresh** forces a fresh read from DeepL.
-- The bar changes color based on thresholds:
-  - OK for normal usage
-  - Warn above 80%
-  - Danger above 95%
-
-The DeepL Free monthly quota resets automatically — you never have to pay to get it back. Checking this panel before long reading sessions is useful when you are close to the monthly limit.
-
-<Image src={popupQuotaDanger} alt="Popup quota section in danger state" width={340} />
-
 ## Limits
 
-The **Limits** section defines the maximum number of characters a single translation may send.
+The **Limits** section defines the maximum number of characters in a single translation.
 
 - **Max characters per request** accepts values from 500 to 5000.
 - The default value is 1500.
-- This number is also used as the threshold for the `Text too long` error.
-- In Hover mode, this also caps how far up the DOM tree Hover Translate looks for a containing block, so very large ancestor containers cannot accidentally become the translation target.
+- This number is used for the `Text too long` error.
+- In Hover mode, this also caps how far up the DOM tree Hover Translate looks for a containing block.
 
 ## Stored state
 
@@ -85,10 +65,6 @@ Hover Translate keeps the following fields inside `hoverTranslateState`:
   "enabled": true,
   "mode": "hover",
   "selectionTrigger": "shortcut",
-  "deeplApiKey": "your-key",
-  "targetEnglish": "EN-US",
   "maxChars": 1500
 }
 ```
-
-At present, `targetEnglish` is fixed to `EN-US`, although the stored schema also permits `EN-GB`.
