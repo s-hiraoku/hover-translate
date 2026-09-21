@@ -28,6 +28,9 @@ jobs:
       - name: Type check
         run: pnpm exec tsc -b --noEmit
 
+      - name: Test
+        run: pnpm test:coverage
+
       - name: Build
         run: pnpm build
 
