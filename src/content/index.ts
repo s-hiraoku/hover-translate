@@ -1,9 +1,7 @@
 import type {
   Mode,
   SelectionTrigger,
-  SourceLang,
   StorageState,
-  TargetLang,
   TranslateSelectionRequest,
 } from "../shared/messages";
 import type { BuiltInTranslator, DownloadProgress, TranslatorPair } from "../shared/browser-ai";
@@ -13,6 +11,7 @@ import {
   isUserActivationError,
   translatorAvailability,
 } from "../shared/browser-ai";
+import { detectLanguages } from "../shared/languages";
 import {
   STORAGE_KEY,
   defaultState,
@@ -22,7 +21,6 @@ import {
 } from "../shared/messages";
 
 const HOVER_DELAY_MS = 300;
-const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
 const MIN_TEXT_LENGTH = 3;
 const NON_LINE_BREAK_WHITESPACE_PATTERN = /[^\S\n]+/g;
 const EXCESSIVE_LINE_BREAK_PATTERN = /\n{3,}/g;
@@ -643,10 +641,6 @@ function normalizeExtractedText(text: string): string {
     .join("\n")
     .replace(EXCESSIVE_LINE_BREAK_PATTERN, "\n\n")
     .trim();
-}
-
-function detectLanguages(text: string): [SourceLang, TargetLang] {
-  return JAPANESE_TEXT_PATTERN.test(text) ? ["ja", "en"] : ["en", "ja"];
 }
 
 function createTooltip(): HTMLDivElement {
