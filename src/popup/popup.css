@@ -226,7 +226,8 @@ body::before {
 
 .field input[type="password"],
 .field input[type="text"],
-.field input[type="number"] {
+.field input[type="number"],
+.field textarea {
   width: 100%;
   padding: 8px 2px 8px 2px;
   border: none;
@@ -241,7 +242,8 @@ body::before {
 }
 
 .field input[type="password"]::placeholder,
-.field input[type="text"]::placeholder {
+.field input[type="text"]::placeholder,
+.field textarea::placeholder {
   color: var(--ink-whisper);
   font-family: var(--font-body);
   font-style: italic;
@@ -249,12 +251,24 @@ body::before {
   font-size: 12px;
 }
 
-.field input:focus {
+.field textarea {
+  resize: none;
+}
+
+.field input:focus,
+.field textarea:focus {
   border-bottom-color: var(--coral);
 }
 
-.field input:disabled {
+.field input:disabled,
+.field textarea:disabled {
   opacity: 0.4;
+}
+
+.translate-result {
+  max-height: 7.5em;
+  overflow-y: auto;
+  white-space: pre-wrap;
 }
 
 /* Hide number input spinners */

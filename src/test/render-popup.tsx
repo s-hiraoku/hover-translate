@@ -21,7 +21,7 @@ export async function renderPopup(
   options: RenderPopupOptions = {},
 ) {
   installChromeMock();
-  installTranslatorMock(options.translator);
+  const translator = installTranslatorMock(options.translator);
   if (initialState) {
     await chrome.storage.local.set({
       [STORAGE_KEY]: { ...defaultState, ...initialState },
@@ -37,5 +37,6 @@ export async function renderPopup(
   return {
     ...view,
     user: userEvent.setup(),
+    translator,
   };
 }
