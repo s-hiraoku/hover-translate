@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.0] - 2026-09-23
+
+### Added
+
+- Translate text typed or pasted into the popup. Translation runs on device with Chrome's built-in Translator API, and the draft is not saved to extension storage. No new clipboard permission is required.
+
 ## [2.0.0] - 2026-06-26
 
 ### Changed
