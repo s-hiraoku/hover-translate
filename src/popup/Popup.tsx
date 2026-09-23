@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createTranslator,
   hasBuiltInTranslator,
   translatorAvailability,
 } from "../shared/browser-ai";
+import type { BuiltInTranslator } from "../shared/browser-ai";
 import {
   MAX_MAX_CHARS,
   MIN_MAX_CHARS,
@@ -17,8 +18,41 @@ import {
   type Mode,
   type SelectionTrigger,
 } from "../shared/messages";
+import {
+  beginPopupTranslate,
+  directionLabel,
+  runPopupTranslate,
+} from "./popup-translate";
+import type { PopupTranslateResult } from "./popup-translate";
 
 type TranslatorStatus = "checking" | "unsupported" | "ready" | "needs-download" | "preparing";
+
+function PopupTranslateOutput({
+  result,
+  maxChars,
+}: {
+  result: PopupTranslateResult;
+  maxChars: number;
+}) {
+  switch (result.status) {
+    case "idle":
+    case "running":
+      return null;
+    case "done":
+      return (
+        <div className="translate-result">
+          <div>{directionLabel(result.pair)}</div>
+          <div>{result.text}</div>
+        </div>
+      );
+    case "error":
+      return <div className="translate-result">{messageForCode(result.code, maxChars)}</div>;
+    default: {
+      const unreachable: never = result;
+      return unreachable;
+    }
+  }
+}
 
 export function Popup() {
   const [loaded, setLoaded] = useState(false);
@@ -31,6 +65,10 @@ export function Popup() {
   const [maxChars, setMaxChars] = useState(defaultState.maxChars);
   const [translatorStatus, setTranslatorStatus] = useState<TranslatorStatus>("checking");
   const [prepareProgress, setPrepareProgress] = useState(0);
+  const [draft, setDraft] = useState("");
+  const [result, setResult] = useState<PopupTranslateResult>({ status: "idle" });
+  const generationRef = useRef(0);
+  const sessionsRef = useRef(new Map<string, Promise<BuiltInTranslator>>());
 
   useEffect(() => {
     void readStorageState().then((state) => {
@@ -129,6 +167,21 @@ export function Popup() {
     if (currentMode === "hover") return "Hovering · live";
     if (currentTrigger === "shortcut") return "Selection · ⌥⇧T";
     return "Selection · auto";
+  }
+
+  async function translateDraft(): Promise<void> {
+    const generation = ++generationRef.current;
+    const next = beginPopupTranslate(draft, maxChars, generation);
+    setResult(next);
+    if (next.status !== "running") {
+      return;
+    }
+
+    const settled = await runPopupTranslate(sessionsRef.current, next);
+    if (generationRef.current !== generation) {
+      return;
+    }
+    setResult(settled);
   }
 
   function translatorStatusText(): string {
@@ -275,6 +328,30 @@ export function Popup() {
             </a>
           </div>
         ) : null}
+        <div className="field">
+          <label className="field-label" htmlFor="popup-translate-text">
+            Text
+          </label>
+          <textarea
+            id="popup-translate-text"
+            rows={3}
+            placeholder="Type or paste text"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            disabled={translatorUnsupported}
+          />
+        </div>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            void translateDraft();
+          }}
+          disabled={translatorUnsupported}
+        >
+          Translate
+        </button>
+        <PopupTranslateOutput result={result} maxChars={maxChars} />
       </section>
 
       <section className="section settings-section">

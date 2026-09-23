@@ -32,6 +32,7 @@ No. All JavaScript is bundled and shipped with the extension package. The extens
 - Authentication information: No
 - Personal communications: No
   - If a user hovers over or selects personal content, that text is passed to Chrome's built-in Translator API in the browser.
+  - Text the user types or pastes into the popup is also passed to Chrome's built-in Translator API on the device.
 - Location: No
 - Web history: No
 - User activity: No
