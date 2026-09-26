@@ -217,6 +217,28 @@ function translateButton() {
 }
 
 describe("Popup translate field", () => {
+  it("places the text field, translate button, and result above power, mode, and limits", async () => {
+    const { user } = await renderPopup({ enabled: true, mode: "hover" });
+    const field = translateField() as HTMLTextAreaElement;
+    const button = translateButton();
+    const power = screen.getByRole("button", { name: "Disable translation" });
+    const mode = screen.getByRole("button", { name: "Hover" });
+    const limits = maxCharsInput();
+
+    expect(field.rows).toBe(7);
+    expect(field.compareDocumentPosition(power) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(button.compareDocumentPosition(power) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(field.compareDocumentPosition(mode) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(field.compareDocumentPosition(limits) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Engine" }).compareDocumentPosition(field) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+
+    await user.type(field, "hello");
+    await user.click(button);
+    const result = await screen.findByText("translated");
+    expect(result.compareDocumentPosition(power) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(result.compareDocumentPosition(limits) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("translates an English draft and shows EN → JA", async () => {
     const { user, translator } = await renderPopup();
 

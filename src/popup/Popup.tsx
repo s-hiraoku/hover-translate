@@ -213,6 +213,33 @@ export function Popup() {
         </div>
       </header>
 
+      <section className="section translate-panel">
+        <div className="field">
+          <label className="field-label" htmlFor="popup-translate-text">
+            Text
+          </label>
+          <textarea
+            id="popup-translate-text"
+            rows={7}
+            placeholder="Type or paste text"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            disabled={translatorUnsupported}
+          />
+        </div>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            void translateDraft();
+          }}
+          disabled={translatorUnsupported}
+        >
+          Translate
+        </button>
+        <PopupTranslateOutput result={result} maxChars={maxChars} />
+      </section>
+
       <section className="section setup-section">
         <div className="section-head">
           <h2>Engine</h2>
@@ -328,30 +355,6 @@ export function Popup() {
             </a>
           </div>
         ) : null}
-        <div className="field">
-          <label className="field-label" htmlFor="popup-translate-text">
-            Text
-          </label>
-          <textarea
-            id="popup-translate-text"
-            rows={3}
-            placeholder="Type or paste text"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            disabled={translatorUnsupported}
-          />
-        </div>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => {
-            void translateDraft();
-          }}
-          disabled={translatorUnsupported}
-        >
-          Translate
-        </button>
-        <PopupTranslateOutput result={result} maxChars={maxChars} />
       </section>
 
       <section className="section settings-section">
