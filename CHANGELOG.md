@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.1.1] - 2026-09-26
+
+### Changed
+
+- Show the popup translation field, Translate button, and result above the power, mode, and limits controls. Widen the popup to 420px and make the input tall enough for a short paragraph. The result uses the same text size as the input.
+
+### Fixed
+
+- Wrap an unbroken translation string inside the result box instead of clipping it.
+
 ## [2.1.0] - 2026-09-23
 
 ### Added
