@@ -275,6 +275,7 @@ body::before {
   font-size: 12px;
   line-height: 1.5;
   max-height: calc(8 * 1.5em);
+  overflow-wrap: anywhere;
   overflow-x: hidden;
   overflow-y: auto;
   white-space: pre-wrap;
